@@ -62,7 +62,7 @@ fn halfw(x: f32) -> f32 { return mix(mix(mix(260., 380., ss(-2300., -1700., x)),
   var rock = sat(m * 1.6);
   for (var k = 0; k < 5; k++) {
     let c = KNOLLS[k]; let d = distance(p2, c.xy) / c.w;
-    if (d < 1.) { let t = 1. - d; h += c.z * pow(t, 1.15) * (.85 + .3 * rg2); rock = max(rock, ss(.05, .3, t)); }
+    if (d < 1.) { let t = 1. - d; h += c.z * pow(t, 1.15) * (.85 + .3 * rg2); rock = max(rock, ss(.0, .12, t)); }
   }
   h += 480. * ss(6000., 11500., r) * (.5 + .8 * fbm(vec3f(x * .0005, 9., z * .0005), 3));
   // the highway, the pedestrian way, the Jamarat plaza, the mosque forecourts: graded flat and paved
