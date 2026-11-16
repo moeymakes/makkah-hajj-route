@@ -1,0 +1,27 @@
+Build a real-time, realistic-but-painterly scene of the Hajj route east of Makkah: Mina's valley of white
+tents between bare granite mountains, the Jamarat structure, the road and pedestrian ways to Muzdalifah's open
+plain, and Arafat with Jabal al-Rahmah (its white pillar on top) and the Namirah mosque at the edge. Compose and
+compress the distances so a walk or a short flight takes you along the route; the six poses tell the story in
+order. It only needs to look beautiful and let me walk (and, with a key, fly) through it.
+
+PRIORITIES: 1 visual quality, 2 stable frame pacing at the target spec, 3 small bundle size.
+
+CONSTRAINTS
+- No engines, WebGPU, everything procedural, one self-contained index.html, zero per-frame JS allocations.
+- Sacred sites: no human figures at all and no depiction of any person; the spaces are empty. No interiors. No
+  synthesized adhan, talbiyah or Qur'an recitation; no scripture or other text rendered anywhere. Finials are
+  stacked spheres with an upturned crescent, checked in silhouette. Buildings are respectful approximations; the
+  geography is composed and compressed.
+
+TARGET: RTX 3070, Chrome 157, 2560x1440, GPU <= 11 ms average, p99 <= 16 ms over a scripted 60 s flight.
+
+SCENE
+- Mina: thousands of white peaked tents filling a valley floor between granite mountains, alleys between blocks
+- The Jamarat: a long multi-level concrete structure with three elongated stone pillars rising through it
+- A highway, a covered pedestrian way and an elevated rail line running east out of Mina
+- Muzdalifah: an open gravel plain with tall light towers and low granite knolls
+- Arafat: a broad plain with groves of neem trees and tents, Jabal al-Rahmah (a granite hill with a white pillar on
+  its summit), the Namirah mosque (six minarets, three domes) at the western edge
+- Time menu: Dawn (default), Golden hour, Night (tents glowing, light towers, lit mosque and Jamarat, stars, moon)
+
+VERIFICATION: visual critic subagent on 6 poses + flight frames (stop at minor or 5 iterations); GPU timestamps.
