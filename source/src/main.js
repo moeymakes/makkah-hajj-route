@@ -41,7 +41,7 @@ const sCmp = device.createSampler({ compare: 'less-equal', magFilter: 'linear', 
 const tShadow = tex(SHADOW, SHADOW, DEPTH, TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING);
 const tDummy = tex(1, 1, DEPTH, TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING);
 const tDetail = tex(1024, 1024, 'rgba8unorm', TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING, { mips: 11 });
-const tFar = tex(FN, FN, 'rgba8unorm', TU.TEXTURE_BINDING | TU.COPY_DST), tNear = tex(NX, NZ, 'rgba8unorm', TU.TEXTURE_BINDING | TU.COPY_DST), tHgt = tex(NX, NZ, 'r16float', TU.TEXTURE_BINDING | TU.COPY_DST);
+const tFar = tex(FN, FN, 'rgba8unorm', TU.TEXTURE_BINDING | TU.COPY_DST), tNear = tex(NX, NZ, 'rgba8unorm', TU.TEXTURE_BINDING | TU.COPY_DST), tHgt = tex(NX, NZ, 'rgba8unorm', TU.TEXTURE_BINDING | TU.COPY_DST);
 
 const UB = new Float32Array(60), UBS = new Float32Array(60);
 const ubo = device.createBuffer({ size: 240, usage: BU.UNIFORM | BU.COPY_DST }), uboS = device.createBuffer({ size: 240, usage: BU.UNIFORM | BU.COPY_DST });
@@ -193,9 +193,9 @@ const vbMesh = buf(allV, BU.VERTEX), ibMesh = buf(allI, BU.INDEX);
 const vbFar = buf(new Uint8Array(far.vb), BU.VERTEX), ibFar = buf(far.ib, BU.INDEX), nFarI = far.ib.length;
 const vbNear = buf(new Uint8Array(NEAR.vb), BU.VERTEX), ibNear = buf(NEAR.ib, BU.INDEX), nNearI = NEAR.ib.length;
 Q.writeTexture({ texture: tNear }, NEAR.tex, { bytesPerRow: NX * 4 }, [NX, NZ]);
-// heights as half floats, for per-pixel terrain normals
-{ const h16 = new Float16Array(NEAR.hgt); Q.writeTexture({ texture: tHgt }, h16, { bytesPerRow: NX * 2 }, [NX, NZ]); }
-NEAR.vb = NEAR.ib = NEAR.tex = NEAR.hgt = 0;
+// the terrain normals, filtered per pixel so the mesh's triangles do not show
+Q.writeTexture({ texture: tHgt }, NEAR.nrm, { bytesPerRow: NX * 4 }, [NX, NZ]);
+NEAR.vb = NEAR.ib = NEAR.tex = NEAR.nrm = 0;
 const NSOL = Wd.meshes.length, nSolid = Wd.solids.data.length / 12;
 const solidData = new Float32Array((nSolid + 2) * 12); solidData.set(Wd.solids.data);
 solidData.set([0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0], nSolid * 12);

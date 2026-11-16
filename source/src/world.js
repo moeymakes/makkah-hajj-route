@@ -7,7 +7,7 @@
 
 // time of day: the key light (the moon at night), sky colours, exposure and how bright the lamps are
 const TODS = [
-  { az: 70, el: 9, sunc: [2.8, 1.62, 1.0], zen: [.13, .24, .54], horL: [1.45, .82, .52], horF: [.72, .66, .70], gnd: [.80, .68, .58], expo: .48, rays: 1, lights: .2 },
+  { az: 70, el: 9, sunc: [2.8, 1.62, 1.0], zen: [.13, .24, .54], horL: [1.45, .82, .52], horF: [.72, .66, .70], gnd: [.80, .68, .58], expo: .44, rays: 1, lights: .2 },
   { az: 252, el: 12, sunc: [2.9, 2.1, 1.35], zen: [.10, .24, .58], horL: [1.35, .84, .44], horF: [.74, .68, .66], gnd: [.86, .70, .52], expo: .45, rays: 1, lights: 1 },
   { az: 140, el: 35, sunc: [.16, .19, .27], zen: [.004, .008, .022], horL: [.05, .045, .05], horF: [.02, .025, .04], gnd: [.05, .045, .04], expo: 2.2, rays: 0, lights: 6 },
 ];
@@ -19,17 +19,17 @@ const czf = (x) => 60 * sin(x * .0011) + 25 * sin(x * .0031 + 1);
 // near terrain grid: 5 m cells over the whole route
 const NX = 840, NZ = 448, NC = 5, NOX = -1760, NOZ = -1120;
 // the Jamarat: three pillars along x, floor levels every 12 m above the plaza (JH)
-const JH = -18, JX = [-1610, -1500, -1400], JX0 = -1665, JX1 = -1345, JW = 40;
+const JH = -18, JX = [-1660, -1500, -1340], JX0 = -1720, JX1 = -1280, JW = 40;
 const NAMIRAH = [1060, -390], RAHMA = [1820, 300], MUZ = [260, 150], KHAYF = [-980, -275];
 // viewpoints: x, eye height above the ground (absolute y when flying), z (relative to the valley line), look-at
 // x, y (above the ground there), z (relative), flying
 const POSES_R = [
   [-760, 1.7, -560, -900, -12, 120, 0],
-  [1200, 1.7, -500, 1060, 20, -430, 0],
-  [1955, 1.7, 310, 1820, -22, 237, 0],
+  [1290, 1.7, -560, 1060, 24, -430, 0],
+  [1850, 1.7, 400, 1815, -24, 237, 0],
   [330, 1.7, -50, -400, 4, -95, 0],
   [-420, 1.7, 35, -1100, 6, 35, 0],
-  [-1000, 140, -300, -1500, 10, 0, 1],
+  [-1150, 170, -380, -1520, 0, 10, 1],
 ];
 // 60 s scripted flight: over the tents, out along the road, over Muzdalifah, round Jabal al-Rahmah, then up and back
 const FLY_R = [
@@ -42,8 +42,8 @@ const FLY_R = [
   1300, 45, -150, 1820, 50, 300,
   1650, 55, 150, 1820, 60, 237,
   1850, 75, 420, 1820, 55, 237,
-  1750, 150, 200, 600, 30, 0,
-  1300, 250, 0, -1500, 0, 0,
+  1700, 110, 300, 900, 20, 0,
+  1300, 200, 0, -1500, 0, 0,
 ];
 const FLYR = 2600, FLYH = 420;
 const POSES = [], FLY = new Float32Array(FLY_R.length);
@@ -97,14 +97,14 @@ function buildNear(NA, fh) {
     const gx = (x - NOX) / NC, gz = (z - NOZ) / NC, ix = min(gx | 0, NX - 2), iz = min(gz | 0, NZ - 2), fx = gx - ix, fz = gz - iz;
     return mix(mix(H(ix, iz), H(ix + 1, iz), fx), mix(H(ix, iz + 1), H(ix + 1, iz + 1), fx), fz);
   };
-  const nv = NX * NZ, vb = new ArrayBuffer(nv * 16), vf = new Float32Array(vb), v8 = new Int8Array(vb), tex = new Uint8Array(nv * 4), hgt = new Float32Array(nv);
+  const nv = NX * NZ, vb = new ArrayBuffer(nv * 16), vf = new Float32Array(vb), v8 = new Int8Array(vb), tex = new Uint8Array(nv * 4), nrm = new Uint8Array(nv * 4);
   const sx = SUN[0], sy = SUN[1], sz = SUN[2], sl = hypot(sx, sz), tn = sy / sl;
   for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) {
     const k = i + NX * j, x = NOX + i * NC, z = NOZ + j * NC, h = H(i, j);
     let nx = H(i - 1, j) - H(i + 1, j), ny = 2 * NC, nz = H(i, j - 1) - H(i, j + 1); const l = hypot(nx, ny, nz); nx /= l; ny /= l; nz /= l;
     let sh = 1;
     for (let t = 6; t < 3000; t *= 1.12) { const c = h + .5 + t * tn - g(x + sx / sl * t, z + sz / sl * t); if (c < 0) { sh = 0; break; } sh = min(sh, c / (t * .05)); }
-    vf[k * 4] = x; vf[k * 4 + 1] = h; vf[k * 4 + 2] = z; hgt[k] = h;
+    vf[k * 4] = x; vf[k * 4 + 1] = h; vf[k * 4 + 2] = z; nrm[k * 4] = (nx * .5 + .5) * 255; nrm[k * 4 + 1] = (ny * .5 + .5) * 255; nrm[k * 4 + 2] = (nz * .5 + .5) * 255; nrm[k * 4 + 3] = 255;
     v8[k * 16 + 12] = round(nx * 127); v8[k * 16 + 13] = round(ny * 127); v8[k * 16 + 14] = round(nz * 127); v8[k * 16 + 15] = round(clamp(sh, 0, 1) * 127);
     tex[k * 4] = NA[k * 4 + 1] * 255; tex[k * 4 + 1] = NA[k * 4 + 2] * 255; tex[k * 4 + 2] = NA[k * 4 + 3] * 255; tex[k * 4 + 3] = clamp(sh, 0, 1) * 255;
   }
@@ -113,7 +113,7 @@ function buildNear(NA, fh) {
     const a = i + NX * j, b = a + 1, c = a + NX, d = c + 1;
     ib[n++] = a; ib[n++] = c; ib[n++] = d; ib[n++] = a; ib[n++] = d; ib[n++] = b;
   }
-  return { vb, ib, nv, tex, hgt, g };
+  return { vb, ib, nv, tex, nrm, g };
 }
 
 // ---------------------------------------------------------------- mesh toolkit
@@ -187,11 +187,11 @@ function meshTent(w, d) {
   const m = new Mesh(), hw = w / 2, hd = d / 2;
   box(m, -hw, -.6, -hd, hw, 2.4, hd, .85);
   const o = .25, eave = [[-hw - o, 2.25, -hd - o], [hw + o, 2.25, -hd - o], [hw + o, 2.25, hd + o], [-hw - o, 2.25, hd + o]];
-  const hip = w > d + 1, r0 = hip ? [-(w - d) / 2, 4.4, 0] : [0, 4.5, 0], r1 = hip ? [(w - d) / 2, 4.4, 0] : r0;
+  const hip = w > d + 1, r0 = hip ? [-(w - d) / 2, 5.1, 0] : [0, 5.3, 0], r1 = hip ? [(w - d) / 2, 5.1, 0] : r0;
   face(m, hip ? [eave[0], eave[1], r1, r0] : [eave[0], eave[1], r0], [0, .6, -1]);
   face(m, hip ? [eave[2], eave[3], r0, r1] : [eave[2], eave[3], r0], [0, .6, 1]);
   face(m, [eave[1], eave[2], r1], [1, .6, 0]); face(m, [eave[3], eave[0], r0], [-1, .6, 0]);
-  lathe(m, [[.06, 4.3], [.06, 4.9], [0, 4.95]], 6, r0[0], 0, 0);
+  lathe(m, [[.06, 5.1], [.06, 5.6], [0, 5.65]], 6, r0[0], 0, 0);
   return m;
 }
 function meshBird() {
@@ -236,9 +236,9 @@ function makeWorld(FAR, NEAR, flyPts) {
       const bi = round((x + 1230) / 9.6), bj = round((z - cz + 470) / 9.6);
       if (bi % 6 === 5 || bj % 7 === 6) continue;
       const tx = x + rr(-.15, .15), tz = z + rr(-.15, .15);
-      if (nb(tx, tz, 0) < .5 || slope(tx, tz, 5) > 3.6) continue;
+      if (nb(tx, tz, 0) < .5 || slope(tx, tz, 5) > 2 || rnd() < .03) continue;
       if (hypot(tx - KHAYF[0], tz - KHAYF[1]) < 90) continue;
-      solid(tentM[0], tx, gy(tx, tz), tz, 1, Q0, 41, rnd(), 0, 0);
+      solid(tentM[0], tx, min(gy(tx - 3.5, tz - 3.5), gy(tx + 3.5, tz + 3.5), gy(tx - 3.5, tz + 3.5), gy(tx + 3.5, tz - 3.5)) + .05, tz, rr(.96, 1.04), yawQ(rr(-.015, .015)), 41, rnd(), 0, 0);
       occ(tx - 4.3, tx + 4.3, tz - 4.3, tz + 4.3);
     }
   }
@@ -277,7 +277,7 @@ function makeWorld(FAR, NEAR, flyPts) {
     }
     // ramps from the plaza up to the first two levels at both ends
     for (const [x0, dir, y1, zo] of [[JX0, -1, 12, -25], [JX0, -1, 24, 25], [JX1, 1, 12, 25], [JX1, 1, 24, -25]]) {
-      const L = y1 * 5.5, x1 = x0 + dir * L;
+      const L = y1 * 3.6, x1 = x0 + dir * L;
       const pts = [[x0, JH + y1 - .65, jz + zo], [x1, JH - .65 + .3, jz + zo]];
       slab.sweep(pts, 12, 1.3, null, true);
       for (const s of [-1, 1]) rail.sweep(pts.map(([x, y, z]) => [x, y + 1.2, z + s * 6]), .3, 1.1, null, false);
@@ -324,7 +324,7 @@ function makeWorld(FAR, NEAR, flyPts) {
     for (let i = 0; i < 1500; i++) {
       const a = rnd() * TAU, d = sqrt(rnd()) * 132, x = RAHMA[0] + cos(a) * d, z = RAHMA[1] + sin(a) * d;
       if (abs(z - RAHMA[1] - (x - RAHMA[0]) * .04) < 3 && x > RAHMA[0]) continue;
-      const s = rr(.9, 4.2) * (1.25 - d / 170);
+      const s = rr(.7, 4.8) * (1.25 - d / 170) * (rnd() < .08 ? 1.6 : 1);
       solid(rids[i % 3], x, gy(x, z) - s * .25, z, s, qRand(), 27, rnd(), 0, 2);
       if (s > 1.4) CC.push(x, z, s * .8, gy(x, z) + s);
     }
@@ -343,10 +343,11 @@ function makeWorld(FAR, NEAR, flyPts) {
       solid(rid, x, gy(x, z) - s * .3, z, s, qRand(), 27, rnd(), 60, 2);
     }
     const top = gy(RAHMA[0], RAHMA[1]), pl = new Mesh(), pw = new Mesh();
-    box(pl, RAHMA[0] - 1.6, top - .5, RAHMA[1] - 1.6, RAHMA[0] + 1.6, top + .5, RAHMA[1] + 1.6);
+    box(pl, RAHMA[0] - 4, top - .8, RAHMA[1] - 4, RAHMA[0] + 4, top + .2, RAHMA[1] + 4); box(pl, RAHMA[0] - 2.6, top + .2, RAHMA[1] - 2.6, RAHMA[0] + 2.6, top + .55, RAHMA[1] + 2.6);
+    box(pl, RAHMA[0] - 1.6, top + .55, RAHMA[1] - 1.6, RAHMA[0] + 1.6, top + .9, RAHMA[1] + 1.6);
     box(pl, RAHMA[0] - 1.25, top + .5, RAHMA[1] - 1.25, RAHMA[0] + 1.25, top + 1.1, RAHMA[1] + 1.25);
-    box(pl, RAHMA[0] - .9, top + 1.1, RAHMA[1] - .9, RAHMA[0] + .9, top + 8.4, RAHMA[1] + .9);
-    box(pl, RAHMA[0] - .7, top + 8.4, RAHMA[1] - .7, RAHMA[0] + .7, top + 8.75, RAHMA[1] + .7);
+    box(pl, RAHMA[0] - .9, top + 1.1, RAHMA[1] - .9, RAHMA[0] + .9, top + 9.4, RAHMA[1] + .9);
+    box(pl, RAHMA[0] - .7, top + 9.4, RAHMA[1] - .7, RAHMA[0] + .7, top + 9.75, RAHMA[1] + .7);
     solid(add(pl), 0, 0, 0, 1, Q0, 36, 0);
     CC.push(RAHMA[0], RAHMA[1], 1.8, top + 9);
   }
@@ -374,14 +375,14 @@ function makeWorld(FAR, NEAR, flyPts) {
     const postId = add(post), lampId = add(lampG);
     for (let x = -1300; x < 2250; x += 42) { const z = czf(x) - 75, y = gy(x, z); solid(postId, x, y, z, 1, Q0, 44, 0); solid(lampId, x, y, z, 1, Q0, 22, rnd()); CC.push(x, z, .4, y + 12); }
     // the pedestrian way: a module every 14 m, two posts and a shallow white roof
-    lathe(canopy, [[.14, -.4], [.12, 5.2]], 6, 0, 0, -5.2); lathe(canopy, [[.14, -.4], [.12, 5.2]], 6, 0, 0, 5.2);
-    box(canopy, -7, 5.2, -6.2, 7, 5.45, 6.2, .9); box(canopy, -7.1, 5.45, -.4, 7.1, 5.9, .4, .9);
+    for (const z of [-5.2, 5.2]) lathe(canopy, [[.3, -.4], [.3, .25], [.17, .4], [.14, 4.7], [.3, 4.95], [.3, 5.2]], 8, 0, 0, z);
+    box(canopy, -7.6, 5.2, -6.2, 7.6, 5.45, 6.2, .9); box(canopy, -7.6, 5.45, -.4, 7.6, 5.9, .4, .9);
     const canId = add(canopy);
-    for (let x = -1150; x < 980; x += 14) { const z = czf(x) + 35, y = gy(x, z); if (na(x, z, 3) < .3) continue; solid(canId, x, y, z, 1, yawQ(atan2(czf(x + 7) - czf(x - 7), 14) * -1), 45, rnd(), 0, 1); CC.push(x, z - 5.2, .3, y + 6); CC.push(x, z + 5.2, .3, y + 6); }
+    for (let x = -1150; x < 980; x += 14) { const z = czf(x) + 35, y = gy(x, z); if (na(x, z, 3) < .3) continue; solid(canId, x, y, z, 1, Q0, 45, rnd(), 0, 1); CC.push(x, z - 5.2, .3, y + 6); CC.push(x, z + 5.2, .3, y + 6); }
     // the rail viaduct: piers every 30 m under a deck that rides 14 m over the smoothed ground
     box(pier, -1.2, -24, -2, 1.2, -1, 2, .8); box(pier, -1.6, -1.6, -2.6, 1.6, -1, 2.6, .8); box(deck, -15.2, -1.1, -5, 15.2, 0, 5); box(deck, -15.2, 0, -5, 15.2, 1.1, -4.7); box(deck, -15.2, 0, 4.7, 15.2, 1.1, 5);
     const pierId = add(pier), deckId = add(deck);
-    for (let x = -1300; x < 2150; x += 30) {
+    for (let x = -1740; x < 2150; x += 30) {
       const z = czf(x) - 160, gyS = (gy(x - 30, z) + gy(x, z) * 2 + gy(x + 30, z)) / 4, y = max(gyS, gy(x, z)) + 14;
       const zn = czf(x + 30) - 160, yn = max((gy(x, zn) + gy(x + 30, zn) * 2 + gy(x + 60, zn)) / 4, gy(x + 30, zn)) + 14;
       const q = qMul(yawQ(-atan2(zn - z, 30)), qAxis(0, 0, 1, atan2(yn - y, 30)));

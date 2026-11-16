@@ -62,16 +62,17 @@ fn halfw(x: f32) -> f32 { return mix(mix(mix(260., 380., ss(-2300., -1700., x)),
   var rock = sat(m * 1.6);
   for (var k = 0; k < 5; k++) {
     let c = KNOLLS[k]; let d = distance(p2, c.xy) / c.w;
-    if (d < 1.) { let t = 1. - d; h += c.z * pow(t, 1.15) * (.85 + .3 * rg2); rock = max(rock, ss(.0, .12, t)); }
+    if (d < 1.) { let t = 1. - d; let lob = 1. + .35 * sin(atan2(z - c.y, x - c.x) * 2. + c.x); h += c.z * pow(t, 1.15) * (.85 + .3 * rg2) * mix(1., lob, ss(.0, .5, t) * (1. - ss(.6, 1., t))); rock = max(rock, ss(.0, .12, t)); }
   }
   h += 480. * ss(6000., 11500., r) * (.5 + .8 * fbm(vec3f(x * .0005, 9., z * .0005), 3));
   // the highway, the pedestrian way, the Jamarat plaza, the mosque forecourts: graded flat and paved
   let inRoute = ss(-1560., -1500., x) * ss(2300., 2250., x);
   let road = ss(15., 12., abs(zr + 75.)) * inRoute;
   let path = ss(9., 7., abs(zr - 35.)) * ss(-1220., -1180., x) * ss(1000., 960., x);
-  let jam = ss(-1720., -1690., x) * ss(-1290., -1320., x) * ss(105., 90., abs(zr));
-  let nam = ss(140., 120., abs(x - ${NAMIRAH[0]}.)) * ss(100., 80., abs(z - (${NAMIRAH[1]}.)));
-  let paved = max(max(path, jam), nam);
+  let jam = ss(-1850., -1820., x) * ss(-1170., -1200., x) * ss(105., 90., abs(zr));
+  let nam = max(ss(150., 130., abs(x - ${NAMIRAH[0]}.)) * ss(110., 90., abs(z - (${NAMIRAH[1]}.))), ss(160., 110., abs(x - ${NAMIRAH[0] + 160}.)) * ss(150., 120., abs(z - (${NAMIRAH[1] - 40}.))));
+  let stair = ss(2.2, 1.6, abs((z - ${RAHMA[1]}.) - (x - ${RAHMA[0]}.) * .1)) * step(x, ${RAHMA[0]}. + 2.) * step(${RAHMA[0] - 140}., x);
+  let paved = max(max(max(path, jam), nam), stair);
   h = mix(h, ${JH}., jam);
   h = mix(h, h - m * 60., max(road, path) * .0);
   rock *= 1. - max(road, paved);
@@ -138,7 +139,7 @@ fn aerialAt(c: vec3f, cam: vec3f, wp: vec3f, sun: vec3f) -> vec3f {
   let od = select((1. - exp(-k * d)) / k, d, abs(k) < 1e-7) * exp(-max(cam.y, -30.) / HSCALE);
   let k2 = rd.y / 60.;
   let od2 = select((1. - exp(-k2 * d)) / k2, d, abs(k2) < 1e-7) * exp(-max(cam.y, -30.) / 60.);
-  let T = exp(-BETA * od - vec3f(1.2e-4, 1.3e-4, 1.45e-4) * od2 * .6);
+  let T = exp(-BETA * od - vec3f(1.2e-4, 1.3e-4, 1.45e-4) * od2 * .35);
   let ins = mix(skyCol(normalize(vec3f(rd.x, max(rd.y, 0.) * .3 + .012, rd.z)), sun), HORF * .9 + HORL * .1, ss(900., 6000., d) * .4);
   return c * T + ins * (1. - T);
 }
@@ -155,13 +156,8 @@ const S_B = S_G + /*wgsl*/`
 @group(0) @binding(8) var tF: texture_2d<f32>;
 @group(0) @binding(9) var tN: texture_2d<f32>;
 @group(0) @binding(10) var tH: texture_2d<f32>;
-// the near terrain's normal from its heights, per pixel (no lattice from the mesh's triangles)
-fn nearNormal(p: vec2f) -> vec3f {
-  let e = ${NC}.; let uv = (p - NEARO) / NEARS; let du = vec2f(e / NEARS.x, 0.); let dv = vec2f(0., e / NEARS.y);
-  let hx = textureSampleLevel(tH, sC, uv - du, 0.).r - textureSampleLevel(tH, sC, uv + du, 0.).r;
-  let hz = textureSampleLevel(tH, sC, uv - dv, 0.).r - textureSampleLevel(tH, sC, uv + dv, 0.).r;
-  return normalize(vec3f(hx, 2. * e, hz));
-}
+// the near terrain's normal, filtered per pixel (no lattice from the mesh's triangles)
+fn nearNormal(p: vec2f) -> vec3f { return normalize(textureSampleLevel(tH, sC, (p - NEARO) / NEARS, 0.).xyz * 2. - 1.); }
 fn shUV(p: vec3f) -> vec3f { let s = g.sm * vec4f(p, 1.); return vec3f(s.x * .5 + .5, .5 - s.y * .5, s.z - .0003); }
 fn shK(s: vec3f) -> f32 { let e = min(min(s.x, 1. - s.x), min(s.y, 1. - s.y)); return ss(0., .02, e) * step(s.z, 1.); }
 // the near masks (rock, road, paving, sun visibility from the terrain), 1 outside the near grid
@@ -182,7 +178,7 @@ fn shadow9(p: vec3f) -> f32 {
 fn amb(n: vec3f, sky: f32) -> vec3f {
   let up = n.y * .5 + .5;
   let toSun = sat(dot(normalize(vec3f(n.x, 0., n.z) + vec3f(0., 1e-4, 0.)), normalize(vec3f(SUN_.x, 0., SUN_.z)))) * (1. - abs(n.y));
-  return HORL * .3 * toSun * toSun * (.4 + .6 * sky) + mix(ZEN, (HORL + HORF) * .5, .74) * .92 * up * up * (.35 + .65 * sky) + GND * .72 * (1. - up) * (.65 + .35 * sky) + GND * .16 * (.5 + .5 * sky);
+  return HORL * .3 * toSun * toSun * (.4 + .6 * sky) + mix(ZEN, (HORL + HORF) * .5, .6) * .92 * up * up * (.35 + .65 * sky) + GND * .72 * (1. - up) * (.65 + .35 * sky) + GND * .16 * (.5 + .5 * sky);
 }
 // lamps at night: pools of warm light under the road lamps, the Muzdalifah towers and round the Jamarat
 fn lamps(p: vec3f, n: vec3f) -> vec3f {
@@ -267,7 +263,6 @@ fn archD(bu: f32, v: f32, hw: f32, ys: f32, R: f32) -> vec2f {
     sand = mix(sand, sand * vec3f(.82, .8, .78), ss(.55, .75, Lg.a) * .5);
     var gr = mix(vec3f(.17, .16, .15), vec3f(.31, .28, .25), sat(G2.a * 1.4 - .2)) * (.55 + .7 * mix(B.h, G2.b, .5));
     gr = mix(gr, gr * vec3f(1.18, 1.05, .92), ss(.5, .8, B.c) * .45);
-    gr *= .9 + .2 * ss(.35, .65, fract(i.wp.y / 31. + G2.b * 1.7 + Lg.a * 1.3));
     alb = mix(sand, gr, sat(rock * 1.3) * (1. - .25 * flt));
     let lane = cov(abs(abs(i.wp.z - czf(i.wp.x) + 75.) - 6.), .12, fwp) + cov(abs(abs(i.wp.z - czf(i.wp.x) + 75.) - 1.), .1, fwp) * step(.5, fract(i.wp.x / 9.));
     alb = mix(alb, mix(vec3f(.16, .16, .17), vec3f(.85, .83, .78), lane * (1. - ss(.3, 1.5, fwp))), road);
@@ -279,7 +274,12 @@ fn archD(bu: f32, v: f32, hw: f32, ys: f32, R: f32) -> vec2f {
     alb = vec3f(.80, .76, .68) * (.96 + .05 * B.h) * (.97 + .05 * C.c);
     let wv = fv;
     let ar1 = arcade(fu + 3., wv, 6., 6., .8) * wall * step(.2, abs(on.x) + abs(on.z));
-    alb = mix(alb, vec3f(.05, .045, .04) * (.6 + .8 * ss(1., 6., wv)), ar1 * step(wv, 14.));
+    let ar2 = arcade(fu + 3., wv + .25, 5.2, 5.6, .8) * wall;
+    alb = mix(alb, alb * .72, (ar1 - ar2 * ar1) * step(wv, 14.));
+    alb = mix(alb, mix(vec3f(.05, .045, .04), vec3f(.16, .13, .10), ss(4., .5, wv)), ar2 * ar1 * step(wv, 14.));
+    let pil = cov(abs(fract((fu + 3.) / 6.) - .5) * 6. - 2.75, .18, fwop) * step(wv, 18.5) * step(9.5, wv) * wall;
+    alb = mix(alb, alb * .86, pil);
+    alb = mix(alb, alb * .7, cov(abs(wv - 18.6), .25, fwop) * wall);
     emi = LAMPC * LIGHTS * .12 * ar1 * step(wv, 14.);
     alb = mix(alb, alb * vec3f(.86, .8, .7), ss(.9, .97, fract(wv / 15.)) * wall);
     alb = mix(alb, vec3f(.72, .70, .66) * (.9 + .15 * B.c), ss(.6, .9, on.y));
@@ -327,7 +327,7 @@ fn archD(bu: f32, v: f32, hw: f32, ys: f32, R: f32) -> vec2f {
     emi = vec3f(1., .78, .52) * LIGHTS * (.05 + .1 * wallPart) * step(.15, hs(sd * 7.)) * f32(LIGHTS > .5);
     gloss = .2; bump = .02; vao = mix(.7, 1., ss(-.5, 1.5, fv));
   } else if (mat == 42) {
-    alb = mix(vec3f(.12, .14, .07), vec3f(.19, .20, .10), B.c) * (.7 + .6 * C.h); gloss = .1; bump = 1.4;
+    alb = mix(vec3f(.17, .19, .10), vec3f(.25, .26, .14), B.c) * (.7 + .6 * C.h); gloss = .1; bump = 1.4;
     vao = mix(.55, 1., sat((i.op.y - 2.) / 3.5));
   } else if (mat == 43) {
     alb = vec3f(.24, .19, .14) * (.8 + .4 * C.h); bump = .8;
