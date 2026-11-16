@@ -333,6 +333,9 @@ function makeWorld(FAR, NEAR, flyPts) {
       const s = rr(.6, 3.5);
       solid(rids[i % 3], x, gy(x, z) - s * .3, z, s, qRand(), 27, rnd(), 900, 2);
     }
+    // scattered granite and a few low shrubs on the plain at the foot of Jabal al-Rahmah
+    { const cx = 1858, cz = czf(1858) + 400;
+      for (let i = 0; i < 160; i++) { const x = cx + rr(-90, 70), z = cz + rr(-150, -10); if (hypot(x - cx, z - cz - 25) < 14) continue; const s = rr(.15, 1.4) * (rnd() < .15 ? 2 : 1); solid(rids[i % 3], x, gy(x, z) - s * .3, z, s, qRand(), 27, rnd(), 400, 2); } }
     // pebbles on Muzdalifah's plain round the viewpoint and along the walkway
     for (let i = 0; i < 9000; i++) {
       const x = rr(-60, 420), z = czf(x) + rr(-160, 60);
