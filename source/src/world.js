@@ -9,7 +9,7 @@
 const TODS = [
   { az: 70, el: 9, sunc: [2.8, 1.62, 1.0], zen: [.13, .24, .54], horL: [1.45, .82, .52], horF: [.72, .66, .70], gnd: [.80, .68, .58], expo: .44, rays: 1, lights: .2 },
   { az: 252, el: 12, sunc: [2.9, 2.1, 1.35], zen: [.10, .24, .58], horL: [1.35, .84, .44], horF: [.74, .68, .66], gnd: [.86, .70, .52], expo: .45, rays: 1, lights: 1 },
-  { az: 140, el: 35, sunc: [.16, .19, .27], zen: [.004, .008, .022], horL: [.05, .045, .05], horF: [.02, .025, .04], gnd: [.05, .045, .04], expo: 2.2, rays: 0, lights: 6 },
+  { az: 140, el: 35, sunc: [.11, .135, .2], zen: [.004, .008, .022], horL: [.05, .045, .05], horF: [.02, .025, .04], gnd: [.04, .036, .034], expo: 1.5, rays: 0, lights: 6 },
 ];
 const TD = TODS[TOD], NIGHT = TOD === 2;
 const SUN = (() => { const a = TD.az * PI / 180, e = TD.el * PI / 180; return [sin(a) * cos(e), sin(e), -cos(a) * cos(e)]; })();
@@ -20,14 +20,14 @@ const czf = (x) => 60 * sin(x * .0011) + 25 * sin(x * .0031 + 1);
 const NX = 840, NZ = 448, NC = 5, NOX = -1760, NOZ = -1120;
 // the Jamarat: three pillars along x, floor levels every 12 m above the plaza (JH)
 const JH = -18, JX = [-1660, -1500, -1340], JX0 = -1720, JX1 = -1280, JW = 40;
-const NAMIRAH = [1060, -390], RAHMA = [1820, 300], MUZ = [260, 150], KHAYF = [-980, -275];
+const NAMIRAH = [1060, -390], RAHMA = [1820, 300], MUZ = [260, 150], KHAYF = [-640, 290];
 // viewpoints: x, eye height above the ground (absolute y when flying), z (relative to the valley line), look-at
 // x, y (above the ground there), z (relative), flying
 const POSES_R = [
-  [-760, 1.7, -560, -900, -12, 120, 0],
-  [1290, 1.7, -560, 1060, 24, -430, 0],
-  [1850, 1.7, 400, 1815, -24, 237, 0],
-  [330, 1.7, -50, -400, 4, -95, 0],
+  [-1080, 1.7, -540, -560, -30, 60, 0],
+  [1235, 1.7, -540, 1060, 28, -430, 0],
+  [1858, 1.7, 425, 1818, -10, 237, 0],
+  [300, 1.7, -30, -400, 2, -110, 0],
   [-420, 1.7, 35, -1100, 6, 35, 0],
   [-1150, 170, -380, -1520, 0, 10, 1],
 ];
@@ -40,9 +40,9 @@ const FLY_R = [
   500, 30, -30, 1000, 15, -300,
   900, 40, -200, 1060, 20, -390,
   1300, 45, -150, 1820, 50, 300,
-  1650, 55, 150, 1820, 60, 237,
-  1850, 75, 420, 1820, 55, 237,
-  1700, 110, 300, 900, 20, 0,
+  1650, 55, 150, 1820, 40, 237,
+  1850, 75, 420, 1820, 30, 237,
+  1700, 110, 300, 900, -20, 0,
   1300, 200, 0, -1500, 0, 0,
 ];
 const FLYR = 2600, FLYH = 420;
@@ -267,8 +267,8 @@ function makeWorld(FAR, NEAR, flyPts) {
     // the pillars: stadium-shaped stone walls 26 m long, each in an oval basin on every level
     for (const px of JX) {
       const P = []; for (let k = 0; k <= 24; k++) { const a = k / 24 * TAU, c = cos(a), s = sin(a); P.push([px + (c > 0 ? 11.5 : -11.5) + c * 1.6, jz + s * 1.6]); }
-      for (let k = 0; k < 24; k++) { const a = P[k], b = P[k + 1]; face(pil, [[a[0], JH - 1, a[1]], [b[0], JH - 1, b[1]], [b[0], JH + 53, b[1]], [a[0], JH + 53, a[1]]], [(a[0] + b[0]) / 2 - px, 0, (a[1] + b[1]) / 2 - jz]); }
-      face(pil, P.slice(0, 24).map(([x, z]) => [x, JH + 53, z]), [0, 1, 0]);
+      for (let k = 0; k < 24; k++) { const a = P[k], b = P[k + 1]; face(pil, [[a[0], JH - 1, a[1]], [b[0], JH - 1, b[1]], [b[0], JH + 58, b[1]], [a[0], JH + 58, a[1]]], [(a[0] + b[0]) / 2 - px, 0, (a[1] + b[1]) / 2 - jz]); }
+      face(pil, P.slice(0, 24).map(([x, z]) => [x, JH + 58, z]), [0, 1, 0]);
       cbox(px - 13.2, px + 13.2, JH - 2, JH + 53, jz - 1.7, jz + 1.7);
       for (const y of [0, 12, 24, 36, 48]) {
         const B = []; for (let k = 0; k <= 32; k++) { const a = k / 32 * TAU; B.push([px + cos(a) * 21, JH + y + .55, jz + sin(a) * 7.5]); }
@@ -284,7 +284,7 @@ function makeWorld(FAR, NEAR, flyPts) {
       for (let t = .2; t < 1; t += .2) lathe(col, [[.9, 0], [.9, (y1 - .65) * (1 - t)]], 10, mix(x0, x1, t), JH - 1, jz + zo);
     }
     // white tensile canopies on the top level
-    for (let x = JX0 + 20; x < JX1; x += 40) for (const z of [-20, 20]) {
+    for (let x = JX0 + 40; x < JX1 - 20; x += 80) for (const z of [-20, 20]) {
       lathe(canopy, [[.5, 48], [.5, 58], [3, 57.6], [12, 55.2], [17.5, 54.2], [18.5, 54.6]], 16, x, JH, jz + z);
     }
     solid(add(slab), 0, 0, 0, 1, Q0, 27, .1, 0, 1); solid(add(col), 0, 0, 0, 1, Q0, 27, .3, 0, 1);
@@ -319,8 +319,8 @@ function makeWorld(FAR, NEAR, flyPts) {
   // --- Jabal al-Rahmah: granite boulders over the knoll, a pale stair, the white pillar on a stepped base at the top
   {
     rseed(7);
-    const rk = (sx, sy, sz, f) => icosphere(1, (x, y, z) => { const r = .8 + .4 * fbm(x * f + sx, y * f, z * f, 2); return [x * r * sx, y * r * sy, z * r * sz]; });
-    const rids = [rk(1.3, .7, 1, 2.1), rk(1, .9, .8, 3.3), rk(1.6, .55, 1.1, 1.7)].map(add), rid = rids[0];
+    const rk = (sx, sy, sz, f, sub = 0) => icosphere(sub, (x, y, z) => { const r = .8 + .4 * fbm(x * f + sx, y * f, z * f, 2); return [x * r * sx, y * r * sy, z * r * sz]; });
+    const rids = [rk(1.3, .7, 1, 2.1, 1), rk(1, .9, .8, 3.3), rk(1.6, .55, 1.1, 1.7)].map(add), rid = rids[0];
     for (let i = 0; i < 1500; i++) {
       const a = rnd() * TAU, d = sqrt(rnd()) * 132, x = RAHMA[0] + cos(a) * d, z = RAHMA[1] + sin(a) * d;
       if (abs(z - RAHMA[1] - (x - RAHMA[0]) * .04) < 3 && x > RAHMA[0]) continue;
@@ -346,10 +346,10 @@ function makeWorld(FAR, NEAR, flyPts) {
     box(pl, RAHMA[0] - 4, top - .8, RAHMA[1] - 4, RAHMA[0] + 4, top + .2, RAHMA[1] + 4); box(pl, RAHMA[0] - 2.6, top + .2, RAHMA[1] - 2.6, RAHMA[0] + 2.6, top + .55, RAHMA[1] + 2.6);
     box(pl, RAHMA[0] - 1.6, top + .55, RAHMA[1] - 1.6, RAHMA[0] + 1.6, top + .9, RAHMA[1] + 1.6);
     box(pl, RAHMA[0] - 1.25, top + .5, RAHMA[1] - 1.25, RAHMA[0] + 1.25, top + 1.1, RAHMA[1] + 1.25);
-    box(pl, RAHMA[0] - .9, top + 1.1, RAHMA[1] - .9, RAHMA[0] + .9, top + 9.4, RAHMA[1] + .9);
-    box(pl, RAHMA[0] - .7, top + 9.4, RAHMA[1] - .7, RAHMA[0] + .7, top + 9.75, RAHMA[1] + .7);
+    box(pl, RAHMA[0] - 1.1, top + .9, RAHMA[1] - 1.1, RAHMA[0] + 1.1, top + 12.4, RAHMA[1] + 1.1);
+    box(pl, RAHMA[0] - .85, top + 12.4, RAHMA[1] - .85, RAHMA[0] + .85, top + 12.8, RAHMA[1] + .85);
     solid(add(pl), 0, 0, 0, 1, Q0, 36, 0);
-    CC.push(RAHMA[0], RAHMA[1], 1.8, top + 9);
+    CC.push(RAHMA[0], RAHMA[1], 2.2, top + 13);
   }
 
   // --- neem trees on Arafat: a trunk and a lumpy rounded canopy
@@ -358,8 +358,10 @@ function makeWorld(FAR, NEAR, flyPts) {
     const tr = new Mesh(); tr.tube([[0, -.3, 0], [.1, 1.6, .05], [.05, 2.8, -.1]], (k) => .22 - .05 * k, 6, false, (k) => .6 + .2 * k);
     const cn = icosphere(2, (x, y, z) => { const r = 1 + .22 * fbm(x * 2.5 + 3, y * 2.5, z * 2.5, 3); return [x * r * 2.6, 3.6 + y * r * 1.9, z * r * 2.6]; });
     const tid = add(tr), cid = add(cn);
-    for (let i = 0; i < 26000 && (solids[tid] || []).length < 1300 * 12; i++) {
-      const x = rr(900, 2300), cz = czf(x), z = cz + rr(-1100, 1100);
+    const groves = [];
+    for (let i = 0; i < 4000 && groves.length < 60; i++) { const x = rr(900, 2300), z = czf(x) + rr(-1100, 1100); if (nb(x, z, 1) > .5) groves.push([x, z, rr(15, 40)]); }
+    for (let i = 0; i < 26000 && (solids[tid] || []).length < 1100 * 12; i++) {
+      const gv = groves[i % groves.length], a = rnd() * TAU, d = sqrt(rnd()) * gv[2], x = gv[0] + cos(a) * d, z = gv[1] + sin(a) * d;
       if (nb(x, z, 1) < .5 || slope(x, z, 3) > 2) continue;
       const s = rr(.75, 1.25), y = gy(x, z), q = yawQ(rnd() * TAU);
       solid(tid, x, y, z, s, q, 43, rnd(), 0, 0); solid(cid, x, y, z, s, q, 42, rnd(), 0, 0);
@@ -375,10 +377,14 @@ function makeWorld(FAR, NEAR, flyPts) {
     const postId = add(post), lampId = add(lampG);
     for (let x = -1300; x < 2250; x += 42) { const z = czf(x) - 75, y = gy(x, z); solid(postId, x, y, z, 1, Q0, 44, 0); solid(lampId, x, y, z, 1, Q0, 22, rnd()); CC.push(x, z, .4, y + 12); }
     // the pedestrian way: a module every 14 m, two posts and a shallow white roof
-    for (const z of [-5.2, 5.2]) lathe(canopy, [[.3, -.4], [.3, .25], [.17, .4], [.14, 4.7], [.3, 4.95], [.3, 5.2]], 8, 0, 0, z);
-    box(canopy, -7.6, 5.2, -6.2, 7.6, 5.45, 6.2, .9); box(canopy, -7.6, 5.45, -.4, 7.6, 5.9, .4, .9);
-    const canId = add(canopy);
-    for (let x = -1150; x < 980; x += 14) { const z = czf(x) + 35, y = gy(x, z); if (na(x, z, 3) < .3) continue; solid(canId, x, y, z, 1, Q0, 45, rnd(), 0, 1); CC.push(x, z - 5.2, .3, y + 6); CC.push(x, z + 5.2, .3, y + 6); }
+    for (const z of [-5.2, 5.2]) lathe(canopy, [[.3, -.4], [.3, .25], [.17, .4], [.14, 4.9], [.3, 5.15], [.3, 5.3]], 8, 0, 0, z);
+    const canId = add(canopy), vault = new Mesh(), ys = [];
+    for (let x = -1150; x < 980; x += 14) { const z = czf(x) + 35, y = gy(x, z); if (na(x, z, 3) < .3) continue; solid(canId, x, y, z, 1, Q0, 44, rnd(), 0, 1); CC.push(x, z - 5.2, .3, y + 6); CC.push(x, z + 5.2, .3, y + 6); ys.push([x, y, z]); }
+    // the roof rides a smoothed line over the posts, as three strips stepping up to the centre
+    const sm = ys.map((p, i) => { let s = 0, n = 0; for (let j = max(0, i - 2); j <= min(ys.length - 1, i + 2); j++) { s += ys[j][1]; n++; } return [p[0], s / n, p[2]]; });
+    for (const [off, w, dy] of [[-4.2, 4.2, 5.35], [0, 4.4, 5.75], [4.2, 4.2, 5.35]]) vault.sweep(sm.map(([x, y, z]) => [x, y + dy, z + off]), w, .22, null, true);
+    vault.sweep(sm.map(([x, y, z]) => [x, y + 5.2, z]), .5, .35, null, true);
+    solid(add(vault), 0, 0, 0, 1, Q0, 45, .5, 0, 1);
     // the rail viaduct: piers every 30 m under a deck that rides 14 m over the smoothed ground
     box(pier, -1.2, -24, -2, 1.2, -1, 2, .8); box(pier, -1.6, -1.6, -2.6, 1.6, -1, 2.6, .8); box(deck, -15.2, -1.1, -5, 15.2, 0, 5); box(deck, -15.2, 0, -5, 15.2, 1.1, -4.7); box(deck, -15.2, 0, 4.7, 15.2, 1.1, 5);
     const pierId = add(pier), deckId = add(deck);
