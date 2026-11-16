@@ -24,10 +24,10 @@ const NAMIRAH = [1060, -390], RAHMA = [1820, 300], MUZ = [260, 150], KHAYF = [-6
 // viewpoints: x, eye height above the ground (absolute y when flying), z (relative to the valley line), look-at
 // x, y (above the ground there), z (relative), flying
 const POSES_R = [
-  [-1080, 1.7, -540, -560, -30, 60, 0],
-  [1235, 1.7, -540, 1060, 28, -430, 0],
-  [1858, 1.7, 425, 1818, -10, 237, 0],
-  [300, 1.7, -30, -400, 2, -110, 0],
+  [-1080, 1.7, -540, -560, -35, 170, 0],
+  [1222, 1.7, -530, 1060, 30, -430, 0],
+  [1858, 1.7, 425, 1862, -10, 237, 0],
+  [360, 1.7, 15, -400, 2, -110, 0],
   [-420, 1.7, 35, -1100, 6, 35, 0],
   [-1150, 170, -380, -1520, 0, 10, 1],
 ];
@@ -284,11 +284,9 @@ function makeWorld(FAR, NEAR, flyPts) {
       for (let t = .2; t < 1; t += .2) lathe(col, [[.9, 0], [.9, (y1 - .65) * (1 - t)]], 10, mix(x0, x1, t), JH - 1, jz + zo);
     }
     // white tensile canopies on the top level
-    for (let x = JX0 + 40; x < JX1 - 20; x += 80) for (const z of [-20, 20]) {
-      lathe(canopy, [[.5, 48], [.5, 58], [3, 57.6], [12, 55.2], [17.5, 54.2], [18.5, 54.6]], 16, x, JH, jz + z);
-    }
+
     solid(add(slab), 0, 0, 0, 1, Q0, 27, .1, 0, 1); solid(add(col), 0, 0, 0, 1, Q0, 27, .3, 0, 1);
-    solid(add(rail), 0, 0, 0, 1, Q0, 44, 0); solid(add(pil), 0, 0, 0, 1, Q0, 27, .6, 0, 3); solid(add(canopy), 0, 0, 0, 1, Q0, 45, 0);
+    solid(add(rail), 0, 0, 0, 1, Q0, 44, 0); solid(add(pil), 0, 0, 0, 1, Q0, 27, .6, 0, 3);
   }
 
   // --- mosques: a stone hall with arcades painted on, domes, minarets with crescent finials
@@ -377,18 +375,19 @@ function makeWorld(FAR, NEAR, flyPts) {
     const postId = add(post), lampId = add(lampG);
     for (let x = -1300; x < 2250; x += 42) { const z = czf(x) - 75, y = gy(x, z); solid(postId, x, y, z, 1, Q0, 44, 0); solid(lampId, x, y, z, 1, Q0, 22, rnd()); CC.push(x, z, .4, y + 12); }
     // the pedestrian way: a module every 14 m, two posts and a shallow white roof
-    for (const z of [-5.2, 5.2]) lathe(canopy, [[.3, -.4], [.3, .25], [.17, .4], [.14, 4.9], [.3, 5.15], [.3, 5.3]], 8, 0, 0, z);
+    for (const z of [-5.2, 5.2]) lathe(canopy, [[.3, -.4], [.3, .25], [.17, .4], [.15, 4.9], [.24, 5.05]], 8, 0, 0, z);
+    box(canopy, -.22, 5.05, -6.4, .22, 5.42, 6.4);
     const canId = add(canopy), vault = new Mesh(), ys = [];
     for (let x = -1150; x < 980; x += 14) { const z = czf(x) + 35, y = gy(x, z); if (na(x, z, 3) < .3) continue; solid(canId, x, y, z, 1, Q0, 44, rnd(), 0, 1); CC.push(x, z - 5.2, .3, y + 6); CC.push(x, z + 5.2, .3, y + 6); ys.push([x, y, z]); }
     // the roof rides a smoothed line over the posts, as three strips stepping up to the centre
-    const sm = ys.map((p, i) => { let s = 0, n = 0; for (let j = max(0, i - 2); j <= min(ys.length - 1, i + 2); j++) { s += ys[j][1]; n++; } return [p[0], s / n, p[2]]; });
-    for (const [off, w, dy] of [[-4.2, 4.2, 5.35], [0, 4.4, 5.75], [4.2, 4.2, 5.35]]) vault.sweep(sm.map(([x, y, z]) => [x, y + dy, z + off]), w, .22, null, true);
-    vault.sweep(sm.map(([x, y, z]) => [x, y + 5.2, z]), .5, .35, null, true);
+    // the roof: one continuous membrane resting on the cross beams, a ridge beam down the middle
+    vault.sweep(ys.map(([x, y, z]) => [x, y + 5.55, z]), 13, .26, null, true);
+    vault.sweep(ys.map(([x, y, z]) => [x, y + 5.3, z]), .45, .3, null, true);
     solid(add(vault), 0, 0, 0, 1, Q0, 45, .5, 0, 1);
     // the rail viaduct: piers every 30 m under a deck that rides 14 m over the smoothed ground
     box(pier, -1.2, -24, -2, 1.2, -1, 2, .8); box(pier, -1.6, -1.6, -2.6, 1.6, -1, 2.6, .8); box(deck, -15.2, -1.1, -5, 15.2, 0, 5); box(deck, -15.2, 0, -5, 15.2, 1.1, -4.7); box(deck, -15.2, 0, 4.7, 15.2, 1.1, 5);
     const pierId = add(pier), deckId = add(deck);
-    for (let x = -1740; x < 2150; x += 30) {
+    for (let x = -1230; x < 2150; x += 30) {
       const z = czf(x) - 160, gyS = (gy(x - 30, z) + gy(x, z) * 2 + gy(x + 30, z)) / 4, y = max(gyS, gy(x, z)) + 14;
       const zn = czf(x + 30) - 160, yn = max((gy(x, zn) + gy(x + 30, zn) * 2 + gy(x + 60, zn)) / 4, gy(x + 30, zn)) + 14;
       const q = qMul(yawQ(-atan2(zn - z, 30)), qAxis(0, 0, 1, atan2(yn - y, 30)));
@@ -396,6 +395,8 @@ function makeWorld(FAR, NEAR, flyPts) {
       solid(deckId, x + 15, (y + yn) / 2, (z + zn) / 2, 1, q, 27, rnd(), 0, 1);
       CC.push(x, z, 1.6, y);
     }
+    // the rail line's station at its Mina end
+    { const st = new Mesh(), x = -1260, z = czf(x) - 160, y = gy(x, z); box(st, x - 45, y - 3, z - 9, x + 15, y + 18, z + 9); box(st, x - 48, y + 18, z - 11, x + 18, y + 19.2, z + 11); solid(add(st), 0, 0, 0, 1, Q0, 7, .7, 0, 1); cbox(x - 45, x + 15, -200, y + 19, z - 9, z + 9); }
     // Muzdalifah: tall light towers over the open plain
     lathe(tower, [[.5, -1], [.45, 6], [.3, 30], [.2, 32]], 8); box(tower, -2.4, 30.5, -2.4, 2.4, 31, 2.4);
     for (const [dx, dz] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) box(towerL, dx - .6, 31, dz - .6, dx + .6, 32, dz + .6);

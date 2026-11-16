@@ -327,7 +327,7 @@ fn archD(bu: f32, v: f32, hw: f32, ys: f32, R: f32) -> vec2f {
     emi = vec3f(1., .78, .52) * LIGHTS * (.02 + .06 * wallPart) * step(.15, hs(sd * 7.)) * f32(LIGHTS > .5);
     gloss = .2; bump = .02; vao = mix(.7, 1., ss(-.5, 1.5, fv));
   } else if (mat == 42) {
-    alb = mix(vec3f(.17, .19, .10), vec3f(.25, .26, .14), B.c) * (.7 + .6 * C.h); gloss = .1; bump = 1.4;
+    alb = mix(vec3f(.20, .21, .14), vec3f(.27, .27, .18), B.c) * (.7 + .6 * C.h); gloss = .1; bump = 1.4;
     vao = mix(.55, 1., sat((i.op.y - 2.) / 3.5));
   } else if (mat == 43) {
     alb = vec3f(.24, .19, .14) * (.8 + .4 * C.h); bump = .8;
