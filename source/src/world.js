@@ -7,7 +7,7 @@
 
 // time of day: the key light (the moon at night), sky colours, exposure and how bright the lamps are
 const TODS = [
-  { az: 70, el: 9, sunc: [2.8, 1.62, 1.0], zen: [.13, .24, .54], horL: [1.45, .82, .52], horF: [.80, .68, .72], gnd: [.80, .68, .58], expo: .55, rays: 1, lights: .2 },
+  { az: 70, el: 9, sunc: [2.8, 1.62, 1.0], zen: [.13, .24, .54], horL: [1.45, .82, .52], horF: [.72, .66, .70], gnd: [.80, .68, .58], expo: .48, rays: 1, lights: .2 },
   { az: 252, el: 12, sunc: [2.9, 2.1, 1.35], zen: [.10, .24, .58], horL: [1.35, .84, .44], horF: [.74, .68, .66], gnd: [.86, .70, .52], expo: .45, rays: 1, lights: 1 },
   { az: 140, el: 35, sunc: [.16, .19, .27], zen: [.004, .008, .022], horL: [.05, .045, .05], horF: [.02, .025, .04], gnd: [.05, .045, .04], expo: 2.2, rays: 0, lights: 6 },
 ];
@@ -25,9 +25,9 @@ const NAMIRAH = [1060, -390], RAHMA = [1820, 300], MUZ = [260, 150], KHAYF = [-9
 // x, y (above the ground there), z (relative), flying
 const POSES_R = [
   [-760, 1.7, -560, -900, -12, 120, 0],
-  [1215, 1.7, -470, 1060, 22, -422, 0],
-  [1950, 1.7, 290, 1820, 58, 237, 0],
-  [320, 1.7, -40, -400, 22, 20, 0],
+  [1200, 1.7, -500, 1060, 20, -430, 0],
+  [1935, 1.7, 300, 1820, 7, 237, 0],
+  [330, 1.7, -50, -400, 4, -95, 0],
   [-420, 1.7, 35, -1100, 6, 35, 0],
   [-1000, 140, -300, -1500, 10, 0, 1],
 ];
@@ -40,11 +40,10 @@ const FLY_R = [
   500, 30, -30, 1000, 15, -300,
   900, 40, -200, 1060, 20, -390,
   1300, 45, -150, 1820, 50, 300,
-  1650, 55, 150, 1820, 60, 300,
-  1850, 70, 450, 1820, 60, 300,
-  2050, 90, 250, 1500, 40, 0,
-  1800, 160, -100, 0, 0, 0,
-  1200, 260, -150, -1500, 0, 0,
+  1650, 55, 150, 1820, 60, 237,
+  1850, 75, 420, 1820, 55, 237,
+  1750, 150, 200, 600, 30, 0,
+  1300, 250, 0, -1500, 0, 0,
 ];
 const FLYR = 2600, FLYH = 420;
 const POSES = [], FLY = new Float32Array(FLY_R.length);
@@ -98,14 +97,14 @@ function buildNear(NA, fh) {
     const gx = (x - NOX) / NC, gz = (z - NOZ) / NC, ix = min(gx | 0, NX - 2), iz = min(gz | 0, NZ - 2), fx = gx - ix, fz = gz - iz;
     return mix(mix(H(ix, iz), H(ix + 1, iz), fx), mix(H(ix, iz + 1), H(ix + 1, iz + 1), fx), fz);
   };
-  const nv = NX * NZ, vb = new ArrayBuffer(nv * 16), vf = new Float32Array(vb), v8 = new Int8Array(vb), tex = new Uint8Array(nv * 4);
+  const nv = NX * NZ, vb = new ArrayBuffer(nv * 16), vf = new Float32Array(vb), v8 = new Int8Array(vb), tex = new Uint8Array(nv * 4), hgt = new Float32Array(nv);
   const sx = SUN[0], sy = SUN[1], sz = SUN[2], sl = hypot(sx, sz), tn = sy / sl;
   for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) {
     const k = i + NX * j, x = NOX + i * NC, z = NOZ + j * NC, h = H(i, j);
     let nx = H(i - 1, j) - H(i + 1, j), ny = 2 * NC, nz = H(i, j - 1) - H(i, j + 1); const l = hypot(nx, ny, nz); nx /= l; ny /= l; nz /= l;
     let sh = 1;
     for (let t = 6; t < 3000; t *= 1.12) { const c = h + .5 + t * tn - g(x + sx / sl * t, z + sz / sl * t); if (c < 0) { sh = 0; break; } sh = min(sh, c / (t * .05)); }
-    vf[k * 4] = x; vf[k * 4 + 1] = h; vf[k * 4 + 2] = z;
+    vf[k * 4] = x; vf[k * 4 + 1] = h; vf[k * 4 + 2] = z; hgt[k] = h;
     v8[k * 16 + 12] = round(nx * 127); v8[k * 16 + 13] = round(ny * 127); v8[k * 16 + 14] = round(nz * 127); v8[k * 16 + 15] = round(clamp(sh, 0, 1) * 127);
     tex[k * 4] = NA[k * 4 + 1] * 255; tex[k * 4 + 1] = NA[k * 4 + 2] * 255; tex[k * 4 + 2] = NA[k * 4 + 3] * 255; tex[k * 4 + 3] = clamp(sh, 0, 1) * 255;
   }
@@ -114,7 +113,7 @@ function buildNear(NA, fh) {
     const a = i + NX * j, b = a + 1, c = a + NX, d = c + 1;
     ib[n++] = a; ib[n++] = c; ib[n++] = d; ib[n++] = a; ib[n++] = d; ib[n++] = b;
   }
-  return { vb, ib, nv, tex, g };
+  return { vb, ib, nv, tex, hgt, g };
 }
 
 // ---------------------------------------------------------------- mesh toolkit
@@ -298,7 +297,7 @@ function makeWorld(FAR, NEAR, flyPts) {
   const mosque = (cx, cz, w, d, h, mins, k, domes) => {
     const y0 = gy(cx, cz), body = new Mesh(), dm = new Mesh();
     // built round its own origin so the facade pattern is measured from the ground
-    box(body, -w / 2, -6, -d / 2, w / 2, h, d / 2);
+    box(body, -w / 2, -6, -d / 2, w / 2, h, d / 2); box(body, -w / 2 - 6, -6, -d / 2 - 6, w / 2 + 6, .5, d / 2 + 6, .9); box(body, -w / 2 - 3, .5, -d / 2 - 3, w / 2 + 3, 1, d / 2 + 3, .9);
     merlons(body, -w / 2, -d / 2, w / 2, -d / 2, h, 1.8, 1.1); merlons(body, -w / 2, d / 2, w / 2, d / 2, h, 1.8, 1.1);
     merlons(body, -w / 2, -d / 2, -w / 2, d / 2, h, 1.8, 1.1); merlons(body, w / 2, -d / 2, w / 2, d / 2, h, 1.8, 1.1);
     for (const [dx, r] of domes) { lathe(dm, [[r * 1.15, 0], [r * 1.15, 3]], 24, cx + dx, y0 + h, cz); lathe(dm, domeProf(r, 1, 1.08), 28, cx + dx, y0 + h + 3, cz); solid(finId, cx + dx, y0 + h + 3 + 1.35 + r * 1.08 - .3, cz, r * .14, Q0, 10, 0); }
@@ -320,13 +319,21 @@ function makeWorld(FAR, NEAR, flyPts) {
   // --- Jabal al-Rahmah: granite boulders over the knoll, a pale stair, the white pillar on a stepped base at the top
   {
     rseed(7);
-    const rocks = icosphere(1, (x, y, z) => { const r = .85 + .3 * fbm(x * 2.1, y * 2.1, z * 2.1, 2); return [x * r, y * r * .78, z * r]; }), rid = add(rocks);
+    const rk = (sx, sy, sz, f) => icosphere(1, (x, y, z) => { const r = .8 + .4 * fbm(x * f + sx, y * f, z * f, 2); return [x * r * sx, y * r * sy, z * r * sz]; });
+    const rids = [rk(1.3, .7, 1, 2.1), rk(1, .9, .8, 3.3), rk(1.6, .55, 1.1, 1.7)].map(add), rid = rids[0];
     for (let i = 0; i < 1500; i++) {
       const a = rnd() * TAU, d = sqrt(rnd()) * 132, x = RAHMA[0] + cos(a) * d, z = RAHMA[1] + sin(a) * d;
       if (abs(z - RAHMA[1] - (x - RAHMA[0]) * .04) < 3 && x > RAHMA[0]) continue;
       const s = rr(.9, 4.2) * (1.25 - d / 170);
-      solid(rid, x, gy(x, z) - s * .25, z, s, qRand(), 27, rnd(), 0, 2);
+      solid(rids[i % 3], x, gy(x, z) - s * .25, z, s, qRand(), 27, rnd(), 0, 2);
       if (s > 1.4) CC.push(x, z, s * .8, gy(x, z) + s);
+    }
+    // boulders on the mountain slopes round Mina and along the valley sides
+    for (let i = 0; i < 5000; i++) {
+      const x = rr(-1500, 2200), side = rnd() < .5 ? -1 : 1, z = czf(x) + side * rr(300, 1000);
+      if (na(x, z, 1) < .4 || rnd() > .3 + .7 * sstep(500, 100, hypot(x + 760, z - czf(-760) + 560))) continue;
+      const s = rr(.6, 3.5);
+      solid(rids[i % 3], x, gy(x, z) - s * .3, z, s, qRand(), 27, rnd(), 900, 2);
     }
     // pebbles on Muzdalifah's plain round the viewpoint and along the walkway
     for (let i = 0; i < 9000; i++) {
@@ -336,12 +343,11 @@ function makeWorld(FAR, NEAR, flyPts) {
       solid(rid, x, gy(x, z) - s * .3, z, s, qRand(), 27, rnd(), 60, 2);
     }
     const top = gy(RAHMA[0], RAHMA[1]), pl = new Mesh(), pw = new Mesh();
-    lathe(pw, [[7.5, -1], [7.5, .57], [7.2, .57], [7.2, -1]], 24, RAHMA[0], top, RAHMA[1]);
     box(pl, RAHMA[0] - 1.6, top - .5, RAHMA[1] - 1.6, RAHMA[0] + 1.6, top + .5, RAHMA[1] + 1.6);
     box(pl, RAHMA[0] - 1.25, top + .5, RAHMA[1] - 1.25, RAHMA[0] + 1.25, top + 1.1, RAHMA[1] + 1.25);
     box(pl, RAHMA[0] - .9, top + 1.1, RAHMA[1] - .9, RAHMA[0] + .9, top + 8.4, RAHMA[1] + .9);
     box(pl, RAHMA[0] - .7, top + 8.4, RAHMA[1] - .7, RAHMA[0] + .7, top + 8.75, RAHMA[1] + .7);
-    solid(add(pl), 0, 0, 0, 1, Q0, 36, 0); solid(add(pw), 0, 0, 0, 1, Q0, 36, .5);
+    solid(add(pl), 0, 0, 0, 1, Q0, 36, 0);
     CC.push(RAHMA[0], RAHMA[1], 1.8, top + 9);
   }
 
@@ -351,7 +357,7 @@ function makeWorld(FAR, NEAR, flyPts) {
     const tr = new Mesh(); tr.tube([[0, -.3, 0], [.1, 1.6, .05], [.05, 2.8, -.1]], (k) => .22 - .05 * k, 6, false, (k) => .6 + .2 * k);
     const cn = icosphere(2, (x, y, z) => { const r = 1 + .22 * fbm(x * 2.5 + 3, y * 2.5, z * 2.5, 3); return [x * r * 2.6, 3.6 + y * r * 1.9, z * r * 2.6]; });
     const tid = add(tr), cid = add(cn);
-    for (let i = 0; i < 26000 && (solids[tid] || []).length < 3200 * 12; i++) {
+    for (let i = 0; i < 26000 && (solids[tid] || []).length < 1300 * 12; i++) {
       const x = rr(900, 2300), cz = czf(x), z = cz + rr(-1100, 1100);
       if (nb(x, z, 1) < .5 || slope(x, z, 3) > 2) continue;
       const s = rr(.75, 1.25), y = gy(x, z), q = yawQ(rnd() * TAU);

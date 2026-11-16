@@ -41,7 +41,7 @@ const sCmp = device.createSampler({ compare: 'less-equal', magFilter: 'linear', 
 const tShadow = tex(SHADOW, SHADOW, DEPTH, TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING);
 const tDummy = tex(1, 1, DEPTH, TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING);
 const tDetail = tex(1024, 1024, 'rgba8unorm', TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING, { mips: 11 });
-const tFar = tex(FN, FN, 'rgba8unorm', TU.TEXTURE_BINDING | TU.COPY_DST), tNear = tex(NX, NZ, 'rgba8unorm', TU.TEXTURE_BINDING | TU.COPY_DST);
+const tFar = tex(FN, FN, 'rgba8unorm', TU.TEXTURE_BINDING | TU.COPY_DST), tNear = tex(NX, NZ, 'rgba8unorm', TU.TEXTURE_BINDING | TU.COPY_DST), tHgt = tex(NX, NZ, 'r16float', TU.TEXTURE_BINDING | TU.COPY_DST);
 
 const UB = new Float32Array(60), UBS = new Float32Array(60);
 const ubo = device.createBuffer({ size: 240, usage: BU.UNIFORM | BU.COPY_DST }), uboS = device.createBuffer({ size: 240, usage: BU.UNIFORM | BU.COPY_DST });
@@ -49,10 +49,10 @@ const VF = SS.VERTEX | SS.FRAGMENT;
 const bgl0 = device.createBindGroupLayout({ entries: [
   { binding: 0, visibility: VF, buffer: {} },
   { binding: 1, visibility: VF, sampler: {} }, { binding: 2, visibility: VF, sampler: {} }, { binding: 3, visibility: VF, sampler: { type: 'comparison' } },
-  { binding: 4, visibility: VF, texture: { sampleType: 'depth' } }, { binding: 5, visibility: VF, texture: {} }, { binding: 8, visibility: VF, texture: {} }, { binding: 9, visibility: VF, texture: {} }] });
+  { binding: 4, visibility: VF, texture: { sampleType: 'depth' } }, { binding: 5, visibility: VF, texture: {} }, { binding: 8, visibility: VF, texture: {} }, { binding: 9, visibility: VF, texture: {} }, { binding: 10, visibility: VF, texture: {} }] });
 const mkBG0 = (u, sh) => device.createBindGroup({ layout: bgl0, entries: [
   { binding: 0, resource: { buffer: u } }, { binding: 1, resource: sRep }, { binding: 2, resource: sClamp }, { binding: 3, resource: sCmp },
-  { binding: 4, resource: sh.createView() }, { binding: 5, resource: tDetail.createView() }, { binding: 8, resource: tFar.createView() }, { binding: 9, resource: tNear.createView() }] });
+  { binding: 4, resource: sh.createView() }, { binding: 5, resource: tDetail.createView() }, { binding: 8, resource: tFar.createView() }, { binding: 9, resource: tNear.createView() }, { binding: 10, resource: tHgt.createView() }] });
 const bg0 = mkBG0(ubo, tShadow), bg0s = mkBG0(uboS, tDummy);
 const pl0 = device.createPipelineLayout({ bindGroupLayouts: [bgl0] });
 
@@ -193,7 +193,9 @@ const vbMesh = buf(allV, BU.VERTEX), ibMesh = buf(allI, BU.INDEX);
 const vbFar = buf(new Uint8Array(far.vb), BU.VERTEX), ibFar = buf(far.ib, BU.INDEX), nFarI = far.ib.length;
 const vbNear = buf(new Uint8Array(NEAR.vb), BU.VERTEX), ibNear = buf(NEAR.ib, BU.INDEX), nNearI = NEAR.ib.length;
 Q.writeTexture({ texture: tNear }, NEAR.tex, { bytesPerRow: NX * 4 }, [NX, NZ]);
-NEAR.vb = NEAR.ib = NEAR.tex = 0;
+// heights as half floats, for per-pixel terrain normals
+{ const h16 = new Float16Array(NEAR.hgt); Q.writeTexture({ texture: tHgt }, h16, { bytesPerRow: NX * 2 }, [NX, NZ]); }
+NEAR.vb = NEAR.ib = NEAR.tex = NEAR.hgt = 0;
 const NSOL = Wd.meshes.length, nSolid = Wd.solids.data.length / 12;
 const solidData = new Float32Array((nSolid + 2) * 12); solidData.set(Wd.solids.data);
 solidData.set([0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0], nSolid * 12);
