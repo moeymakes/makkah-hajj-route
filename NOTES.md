@@ -8,10 +8,19 @@ Courtyard and Madinah Horizon. None of them was edited. Brief: `prompt.txt`.
 
 ### Realism stages (brief: ~/.config/Claude/side-session-notes/local_e46bf3a1-465b-49b7-b617-a09a30fa0fa1/realism-stages-brief.md)
 
-- 2026-11-18 17:10 AEDT. Stage 1 in progress on branch `realism-s1` (not pushed, not merged). PAUSED at 86% of the
-  5-hour usage window; resume armed for 20:07 AEDT (session cron, one-shot).
-- Done on realism-s1: bf12c6c GTAO+TAA · 55bee59 Hillaire sky · 2789b94 static whole-route shadow map (and the near
-  map no longer skips the 8x8 tents) · b3b613d Mina camps, district tint, exposure pass. Uncommitted: nothing.
+- 2026-11-18 ~21:40 AEDT. **Stage 1 shipped** (realism-s1 fast-forwarded to main). Stage 2 next on `realism-s2`.
+- Stage 1 commits: bf12c6c GTAO+TAA · 55bee59 Hillaire sky · 2789b94 static whole-route shadow map (and the near
+  map no longer skips the 8x8 tents) · b3b613d Mina camps, district tint, exposure pass · fcd487b fix 1 (thinner
+  haze, desert-pavement and silt sheets, walkway paving and membrane, tent variation) · 3645d2e fix 2 (moonlit
+  night, walkway lamps, dawn shafts .6) · d919fc3 fix 3 (fence panels, softer night walkway lamps).
+- Stage 1 gates (final capture verify/rs1-f4, gates verify/rs1-g4): clip .070 (<.5 PASS; all of it sky glow beside
+  the golden sun, pose 2) · flatwhite .286 (<2 PASS) · brightdetail dawn 16.5 -> 72.4, golden 19.4 -> 31.3 (+15%
+  PASS) · GPU avg 5.03 p99 7.79 ms (verify/rs1-g4, PASS) · 0 console errors at 3 Times x H/M/L · menu-preview ok ·
+  index.html ~100 kB. **Critic gate FAILED**: highest "major" after 3 fix loops (verify/rs1-c2, rs1-f2, rs1-f3
+  critic.md). Shipped under the brief's rule: every remaining major is a stage-2 hero (tents read as a regular
+  grid, the Jamarat as a car park with its pillars hidden, Jabal al-Rahmah as a pebbled cone, pose 6's empty plain)
+  and every metric beats live. The in-scope majors (haze, flat plains, walkway, black night) were fixed and dropped
+  out of the list. The 4th loop was not spent: nothing in stage-1 scope was left on the critic's list.
 - Metric: ground crop `--crop 0,.5,1,1`, 6 poses x 3 Times at 1920x1080 (helper scripts in the session scratchpad;
   capture = `flock /tmp/claude-1000/worldsmith-gpu.lock node tools/capture.mjs ../dev.html --out <dir>/t<T> --size
   1920x1080 --storage hajjTime=<T>`). Night brightdetail is unstable (few bright pixels); judge detail on dawn+golden.
@@ -19,12 +28,11 @@ Courtyard and Madinah Horizon. None of them was edited. Brief: `prompt.txt`.
 - After b3b613d (verify/rs1-expo, measured before golden shafts 1 -> .6 and fences 2.2 -> 1.8 m): clip .079 (all of it
   sky glow beside the golden sun in pose 2), flatwhite .32, brightdetail dawn 36.5 / golden 28.5.
 - Perf after 2789b94 (verify/rs1-perf1, 2560x1440 High, 60 s flight): GPU avg 5.27, p99 8.33, max 9.68 ms.
-- index.html 97.5 kB. Critic on bf12c6c (verify/rs1-ao/critic.md): highest "blocker" = tents identical white
-  pyramids on a grid (addressed by b3b613d, not yet re-judged); majors: Jamarat reads as a car park, plain pillar,
-  pose-6 empty ramp, repetitive ground, Jabal al-Rahmah a gravel mound (stage-2 heroes).
-- Next: critic on the current build -> fix loop (<= 4) -> stage-1 gates (index.html 0 errors at 3 Times x H/M/L,
-  menu-preview, perf) -> ship (`git push origin realism-s1:main`, poll live sha) -> stage 2 (heroes: Jamarat,
-  Jabal al-Rahmah, Namirah, Mina tents; bounded GI after Madinah's s2 GI commit; clouds) -> stage 3 (DEM, OSM).
+- Critic on bf12c6c (verify/rs1-ao/critic.md) was "blocker" (identical white pyramids); b3b613d took it to major.
+- Next: stage 2 on `realism-s2`: bounded GI (port of Madinah 8246d13 + 133f332, script ready), altocumulus
+  (02909b3), Jamarat with oval openings round the pillars in every deck + stair towers + roof canopies, Jabal
+  al-Rahmah as dense granite tors + larger pillar platform, tents (per-camp variation, far moire), neem groves ->
+  stage 3 (DEM, OSM).
 
 ### Original build
 
