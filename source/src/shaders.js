@@ -262,7 +262,7 @@ fn lamps(p: vec3f, n: vec3f) -> vec3f {
   if (p.x > -260. && p.x < 760.) { let lx = floor((p.x + 260.) / 110. + .5) * 110. - 260.; let lz = round(zr / 110.) * 110.; let d = vec2f(p.x - lx, zr - lz); acc += 1.4 / (1. + dot(d, d) * .006); }
   if (p.x > -1700. && p.x < -1300.) { acc += 1.5 * ss(140., 40., abs(zr)) * ss(-1720., -1650., p.x) * ss(-1290., -1360., p.x); }
   if (p.x > -1180. && p.x < -460.) { acc += .5 * ss(420., 300., abs(zr)); }
-  if (p.x > -1150. && p.x < 980.) { acc += (1.1 + .5 * cos(p.x * TAU / 14.)) * ss(10., 5., abs(zr - 35.)); }
+  if (p.x > -1150. && p.x < 980.) { acc += (.45 + .55 * pow(.5 + .5 * cos(p.x * TAU / 14.), 3.)) * ss(10., 4., abs(zr - 35.)); }
   return LAMPC * LIGHTS * .05 * acc * (.5 + .5 * sat(n.y));
 }
 fn flood(p: vec3f, n: vec3f) -> vec3f { return vec3f(0.); }
@@ -435,7 +435,13 @@ fn archD(bu: f32, v: f32, hw: f32, ys: f32, R: f32) -> vec2f {
   } else if (mat == 46) {
     // camp fence: ribbed beige metal panels, dusty at the foot
     let rib = cov(abs(fract(fu / .25) - .5) * .25, .03, fwop) * (1. - ss(.01, .05, fwop));
-    alb = vec3f(.62, .58, .50) * (1. - .15 * rib) * mix(.75, 1., ss(-.4, 1.2, fv)) * (.92 + .1 * B.h); gloss = .15; bump = .05;
+    let pn = floor(fu / 2.); let pf = fract(fu / 2.);
+    let post = cov(abs(pf - .5) * 2. - .96, .02, fwop / 2.) * (1. - ss(.02, .1, fwop));
+    alb = vec3f(.62, .58, .50) * (.86 + .2 * h2(vec2f(pn, sd * 9.))) * (1. - .2 * rib) * (.92 + .1 * B.h);
+    alb = mix(alb, alb * vec3f(.72, .62, .5), ss(.55, .85, B.c) * ss(.8, -.4, fv) * .8);
+    alb = mix(alb, vec3f(.30, .29, .27), post);
+    alb = mix(alb, vec3f(.72, .70, .66), cov(abs(fv - 1.72), .06, fwop) * (1. - ss(.02, .1, fwop)));
+    alb *= mix(.68, 1., ss(-.4, 1.2, fv)); gloss = .15; bump = .05;
   } else if (mat == 47) {
     // service blocks (kitchens, washrooms): painted block walls, a grey roof, a dark door
     alb = select(vec3f(.62, .60, .56), vec3f(.40, .40, .40), on.y > .5) * (.9 + .15 * B.h) * (.94 + .1 * C.c);
@@ -444,7 +450,7 @@ fn archD(bu: f32, v: f32, hw: f32, ys: f32, R: f32) -> vec2f {
     let rib = cov(abs(fract(i.wp.x / 1.75) - .5) * 1.75, .04, fwp) * step(on.y, -.5) * (1. - ss(.02, .08, fwp));
     let pan = fract(i.wp.x / 1.75);
     alb = vec3f(.72, .72, .70) * (1. - .25 * rib) * mix(1., (.86 + .14 * sin(pan * PI)) * (.9 + .12 * B.h) * mix(1., .88, ss(.55, .8, Lg.a)), step(on.y, -.5)); gloss = .3; bump = .02;
-    emi = vec3f(1., .82, .6) * .03 * LIGHTS * step(on.y, -.5) * f32(LIGHTS > .5) + SUNC * vec3f(1., .9, .75) * .035 * step(on.y, -.5) * (1. - rib) * f32(!NIGHT);
+    emi = vec3f(1., .82, .6) * .016 * LIGHTS * step(on.y, -.5) * f32(LIGHTS > .5) + SUNC * vec3f(1., .9, .75) * .035 * step(on.y, -.5) * (1. - rib) * f32(!NIGHT);
   }
   var N = normalize(qrot(i.q, normalize(onG + (A.n * .8 + B.n * .6 + C.n * .4 * ss(70., 10., dist)) * bump)));
   if (mat == 41) { N = normalize(mix(N, vec3f(0., 1., 0.), ss(600., 2500., dist) * .3)); }
