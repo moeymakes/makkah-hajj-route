@@ -94,7 +94,7 @@ fn halfw(x: f32) -> f32 { return mix(mix(mix(260., 380., ss(-2300., -1700., x)),
 // same media drive the sun colour (CPU, below), the sky (LUTs, main.js) and the aerial perspective.
 // turb: aerosol multiple of a clear sky; haze: the dusty boundary layer (per km, ~1 km deep) that fades the far
 // mountains; dust: the 70 m ground layer (dawn mist lies thicker in the valley)
-const ATM = { turb: [7, 8, 12][TOD], haze: [.06, .075, .04][TOD], dust: [1.3, 1, 1][TOD], alt: .42 };
+const ATM = { turb: [7, 8, 12][TOD], haze: [.05, .05, .04][TOD], dust: [1.05, .7, 1][TOD], alt: .42 };
 const ATM_BR = [5.802e-3, 13.558e-3, 33.1e-3], ATM_BO = [.65e-3, 1.881e-3, .085e-3];
 const ATM_BMS = 3.996e-3 * ATM.turb, ATM_BME = [4.5e-3, 4.75e-3, 5.2e-3].map((v) => v * ATM.turb);
 // sun transmittance from altitude h (km) to space, integrated on the CPU with the same media as the LUTs
@@ -348,12 +348,16 @@ fn archD(bu: f32, v: f32, hw: f32, ys: f32, R: f32) -> vec2f {
     gr = mix(gr, gr * vec3f(1.18, 1.05, .92), ss(.5, .8, B.c) * .45);
     alb = mix(sand, gr, sat(rock * 1.3) * (1. - .25 * flt));
     alb *= mix(vec3f(1.05, .97, .89), vec3f(.93, .94, .96), ss(.35, .65, D1.a)) * (.9 + .2 * D2.b);
+    // open plains: sheets of darker desert pavement (wind-sorted gravel) and paler silt where water once ran
+    let flatG = (1. - sat(rock * 1.3)) * (1. - max(road, paved));
+    alb = mix(alb, alb * vec3f(.74, .72, .70), ss(.5, .72, G2.a * .6 + D1.b * .4) * flatG * .85);
+    alb = mix(alb, alb * vec3f(1.1, 1.08, 1.04), ss(.62, .8, Lg.a * .5 + D2.a * .5) * flatG * .6);
     // the camps' floors are compacted grey-beige gravel, scuffed paler along the paths
     alb = mix(alb, vec3f(.42, .40, .36) * (.85 + .3 * mix(B.h, D1.b, .5)), ss(.3, .8, fm.b) * (1. - sat(rock * 1.3)) * .75);
     let lane = cov(abs(abs(i.wp.z - czf(i.wp.x) + 75.) - 6.), .12, fwp) + cov(abs(abs(i.wp.z - czf(i.wp.x) + 75.) - 1.), .1, fwp) * step(.5, fract(i.wp.x / 9.));
     alb = mix(alb, mix(vec3f(.26, .25, .25), vec3f(.85, .83, .78), lane * (1. - ss(.3, 1.5, fwp))), road);
     let tile = max(cov(abs(fract(i.wp.x / 1.2) - .5) * 1.2 - .58, .01, fwp), cov(abs(fract(i.wp.z / 1.2) - .5) * 1.2 - .58, .01, fwp)) * (1. - ss(.015, .06, fwp));
-    alb = mix(alb, vec3f(.62, .60, .56) * (1. - .2 * tile) * (.94 + .08 * h2(floor(i.wp.xz / 1.2))), paved);
+    alb = mix(alb, vec3f(.56, .53, .48) * (1. - .2 * tile) * (.92 + .1 * h2(floor(i.wp.xz / 1.2))) * (.9 + .14 * B.h) * mix(vec3f(1.), vec3f(1.03, .99, .93), ss(.4, .7, Lg.a)), paved);
     bump = mix(1., .1, max(road, paved)) * mix(.25, 1.2, rock); gloss = mix(.03, .12, paved);
   } else if (mat == 7) {
     // the mosques: pale stone with two storeys of arcades painted on, a band under the parapet
@@ -412,7 +416,7 @@ fn archD(bu: f32, v: f32, hw: f32, ys: f32, R: f32) -> vec2f {
     let seam = cov(abs(fract(fu / 1.6) - .5) * 1.6, .02, fwop) * (1. - ss(.02, .08, fwop));
     let tone = i.m.w;
     alb = select(select(vec3f(.72, .72, .70), vec3f(.73, .70, .63), tone > .55), vec3f(.64, .64, .62), tone > .85);
-    alb *= (1. - .12 * seam) * (.93 + .1 * hs(sd * 13.)) * (.94 + .1 * B.h);
+    alb *= (1. - .12 * seam) * (.89 + .16 * hs(sd * 13.)) * (.94 + .1 * B.h) * mix(vec3f(1.), vec3f(1.02, .98, .92), ss(.6, .9, hs(sd * 5.3)));
     let roof = ss(.25, .45, on.y);
     alb *= mix(1., .9 + .12 * C.c - .1 * ss(.55, .8, A.c), roof);
     alb = mix(alb * vec3f(.78, .72, .64), alb, ss(-.3, 1.1, fv));
@@ -437,10 +441,12 @@ fn archD(bu: f32, v: f32, hw: f32, ys: f32, R: f32) -> vec2f {
     bump = .1; gloss = .08; emi = vec3f(1., .82, .6) * .02 * LIGHTS * wall * f32(LIGHTS > .5);
   } else if (mat == 45) {
     let rib = cov(abs(fract(i.wp.x / 1.75) - .5) * 1.75, .04, fwp) * step(on.y, -.5) * (1. - ss(.02, .08, fwp));
-    alb = vec3f(.72, .72, .70) * (1. - .25 * rib); gloss = .3; bump = .02;
-    emi = vec3f(1., .82, .6) * .01 * LIGHTS * step(on.y, -.5) * f32(LIGHTS > .5) + SUNC * vec3f(1., .9, .75) * .1 * step(on.y, -.5) * (1. - rib) * f32(!NIGHT);
+    let pan = fract(i.wp.x / 1.75);
+    alb = vec3f(.72, .72, .70) * (1. - .25 * rib) * mix(1., (.86 + .14 * sin(pan * PI)) * (.9 + .12 * B.h) * mix(1., .88, ss(.55, .8, Lg.a)), step(on.y, -.5)); gloss = .3; bump = .02;
+    emi = vec3f(1., .82, .6) * .01 * LIGHTS * step(on.y, -.5) * f32(LIGHTS > .5) + SUNC * vec3f(1., .9, .75) * .035 * step(on.y, -.5) * (1. - rib) * f32(!NIGHT);
   }
-  let N = normalize(qrot(i.q, normalize(onG + (A.n * .8 + B.n * .6 + C.n * .4 * ss(70., 10., dist)) * bump)));
+  var N = normalize(qrot(i.q, normalize(onG + (A.n * .8 + B.n * .6 + C.n * .4 * ss(70., 10., dist)) * bump)));
+  if (mat == 41) { N = normalize(mix(N, vec3f(0., 1., 0.), ss(250., 1400., dist) * .45)); }
   let L = g.sun.xyz; let V = normalize(g.cam.xyz - i.wp);
   let so = 1.;
   let ao = vao * select(mix(1., i.ao, .6), 1., ground);
@@ -448,7 +454,7 @@ fn archD(bu: f32, v: f32, hw: f32, ys: f32, R: f32) -> vec2f {
   let E = SUNC * sh;
   let ndl = sat(dot(N, L));
   // the fabric of tents and canopies lets a little light through
-  let trans = select(0., .25, mat == 41 || mat == 45) * sat(-dot(N, L));
+  let trans = select(0., select(.25, .13, mat == 45), mat == 41 || mat == 45) * sat(-dot(N, L));
   let ab = amb(N, so) * ao;
   let am = ab + lamps(i.wp, N);
   var c = alb * (E * (ndl + trans) + am) * (1. - metal * .85) + emi;
