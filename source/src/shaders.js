@@ -113,7 +113,7 @@ const atmT = (h) => {
 const ATM_TS = atmT(ATM.alt), ATM_T6 = atmT(6), lum3 = (v) => v[0] * .2126 + v[1] * .7152 + v[2] * .0722;
 const ATM_NT = NIGHT ? [.62, .78, 1.3] : [1, 1, 1];
 const ATM_S = lum3(TD.sunc) / lum3(ATM_TS);
-const SUNCP = ATM_TS.map((v, c) => v * ATM_S * ATM_NT[c] * (NIGHT ? .7 : 1)), CLOUDSUN = ATM_T6.map((v, c) => v * ATM_S * ATM_NT[c]);
+const SUNCP = ATM_TS.map((v, c) => v * ATM_S * ATM_NT[c] * (NIGHT ? .95 : 1)), CLOUDSUN = ATM_T6.map((v, c) => v * ATM_S * ATM_NT[c]);
 const f3 = (a) => `vec3f(${a.map((v) => (+v).toPrecision(5)).join(', ')})`;
 const W_ATMC = /*wgsl*/`
 const RG = 6360.; const RT = 6460.; const HR = 8.; const HM = 1.2; const MG = .76;
@@ -262,6 +262,7 @@ fn lamps(p: vec3f, n: vec3f) -> vec3f {
   if (p.x > -260. && p.x < 760.) { let lx = floor((p.x + 260.) / 110. + .5) * 110. - 260.; let lz = round(zr / 110.) * 110.; let d = vec2f(p.x - lx, zr - lz); acc += 1.4 / (1. + dot(d, d) * .006); }
   if (p.x > -1700. && p.x < -1300.) { acc += 1.5 * ss(140., 40., abs(zr)) * ss(-1720., -1650., p.x) * ss(-1290., -1360., p.x); }
   if (p.x > -1180. && p.x < -460.) { acc += .5 * ss(420., 300., abs(zr)); }
+  if (p.x > -1150. && p.x < 980.) { acc += (1.1 + .5 * cos(p.x * TAU / 14.)) * ss(10., 5., abs(zr - 35.)); }
   return LAMPC * LIGHTS * .05 * acc * (.5 + .5 * sat(n.y));
 }
 fn flood(p: vec3f, n: vec3f) -> vec3f { return vec3f(0.); }
@@ -443,10 +444,10 @@ fn archD(bu: f32, v: f32, hw: f32, ys: f32, R: f32) -> vec2f {
     let rib = cov(abs(fract(i.wp.x / 1.75) - .5) * 1.75, .04, fwp) * step(on.y, -.5) * (1. - ss(.02, .08, fwp));
     let pan = fract(i.wp.x / 1.75);
     alb = vec3f(.72, .72, .70) * (1. - .25 * rib) * mix(1., (.86 + .14 * sin(pan * PI)) * (.9 + .12 * B.h) * mix(1., .88, ss(.55, .8, Lg.a)), step(on.y, -.5)); gloss = .3; bump = .02;
-    emi = vec3f(1., .82, .6) * .01 * LIGHTS * step(on.y, -.5) * f32(LIGHTS > .5) + SUNC * vec3f(1., .9, .75) * .035 * step(on.y, -.5) * (1. - rib) * f32(!NIGHT);
+    emi = vec3f(1., .82, .6) * .03 * LIGHTS * step(on.y, -.5) * f32(LIGHTS > .5) + SUNC * vec3f(1., .9, .75) * .035 * step(on.y, -.5) * (1. - rib) * f32(!NIGHT);
   }
   var N = normalize(qrot(i.q, normalize(onG + (A.n * .8 + B.n * .6 + C.n * .4 * ss(70., 10., dist)) * bump)));
-  if (mat == 41) { N = normalize(mix(N, vec3f(0., 1., 0.), ss(250., 1400., dist) * .45)); }
+  if (mat == 41) { N = normalize(mix(N, vec3f(0., 1., 0.), ss(600., 2500., dist) * .3)); }
   let L = g.sun.xyz; let V = normalize(g.cam.xyz - i.wp);
   let so = 1.;
   let ao = vao * select(mix(1., i.ao, .6), 1., ground);

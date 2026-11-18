@@ -66,7 +66,7 @@ let AMBUP;
     for (let i = 0; i < 192; i++) for (let c = 0; c < 3; c++) I[c] += f16(h[(j * 192 + i) * 4 + c]) * w;
   }
   rb.unmap(); rb.destroy();
-  AMBUP = I.map((x, c) => x * ATM_S * ATM_NT[c] * (NIGHT ? .3 : 1));
+  AMBUP = I.map((x, c) => x * ATM_S * ATM_NT[c] * (NIGHT ? .45 : 1));
 }
 const UB = new Float32Array(100), UBS = new Float32Array(100), UBS2 = new Float32Array(100);
 const ubo = device.createBuffer({ size: 400, usage: BU.UNIFORM | BU.COPY_DST }), uboS = device.createBuffer({ size: 400, usage: BU.UNIFORM | BU.COPY_DST }), uboS2 = device.createBuffer({ size: 400, usage: BU.UNIFORM | BU.COPY_DST });
