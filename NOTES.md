@@ -6,6 +6,28 @@ Courtyard and Madinah Horizon. None of them was edited. Brief: `prompt.txt`.
 
 ## State (update after every step)
 
+### Realism stages (brief: ~/.config/Claude/side-session-notes/local_e46bf3a1-465b-49b7-b617-a09a30fa0fa1/realism-stages-brief.md)
+
+- 2026-11-18 17:10 AEDT. Stage 1 in progress on branch `realism-s1` (not pushed, not merged). PAUSED at 86% of the
+  5-hour usage window; resume armed for 20:07 AEDT (session cron, one-shot).
+- Done on realism-s1: bf12c6c GTAO+TAA · 55bee59 Hillaire sky · 2789b94 static whole-route shadow map (and the near
+  map no longer skips the 8x8 tents) · b3b613d Mina camps, district tint, exposure pass. Uncommitted: nothing.
+- Metric: ground crop `--crop 0,.5,1,1`, 6 poses x 3 Times at 1920x1080 (helper scripts in the session scratchpad;
+  capture = `flock /tmp/claude-1000/worldsmith-gpu.lock node tools/capture.mjs ../dev.html --out <dir>/t<T> --size
+  1920x1080 --storage hajjTime=<T>`). Night brightdetail is unstable (few bright pixels); judge detail on dawn+golden.
+- Live baseline (verify/rs-base): clip .003, flatwhite 1.72, brightdetail dawn 16.5 / golden 19.4 / all 25.8.
+- After b3b613d (verify/rs1-expo, measured before golden shafts 1 -> .6 and fences 2.2 -> 1.8 m): clip .079 (all of it
+  sky glow beside the golden sun in pose 2), flatwhite .32, brightdetail dawn 36.5 / golden 28.5.
+- Perf after 2789b94 (verify/rs1-perf1, 2560x1440 High, 60 s flight): GPU avg 5.27, p99 8.33, max 9.68 ms.
+- index.html 97.5 kB. Critic on bf12c6c (verify/rs1-ao/critic.md): highest "blocker" = tents identical white
+  pyramids on a grid (addressed by b3b613d, not yet re-judged); majors: Jamarat reads as a car park, plain pillar,
+  pose-6 empty ramp, repetitive ground, Jabal al-Rahmah a gravel mound (stage-2 heroes).
+- Next: critic on the current build -> fix loop (<= 4) -> stage-1 gates (index.html 0 errors at 3 Times x H/M/L,
+  menu-preview, perf) -> ship (`git push origin realism-s1:main`, poll live sha) -> stage 2 (heroes: Jamarat,
+  Jabal al-Rahmah, Namirah, Mina tents; bounded GI after Madinah's s2 GI commit; clouds) -> stage 3 (DEM, OSM).
+
+### Original build
+
 - Phase: 7 (delivered locally, committed, nothing pushed). Critic loop stopped by the brief's rule: 5 critic
   iterations (on iter-03, 06, 08, 10, 13), highest severity "major" every time. Gate 1 NOT passed; gate 2 passes.
 - index.html: 78.6 kB, 32.6 kB gzipped. Load to menu ~1.1 s headless.
