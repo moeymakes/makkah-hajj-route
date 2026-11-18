@@ -39,7 +39,7 @@ const sRep = device.createSampler({ addressModeU: 'repeat', addressModeV: 'repea
 const sClamp = device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
 const sCmp = device.createSampler({ compare: 'less-equal', magFilter: 'linear', minFilter: 'linear' });
 const tShadow = tex(SHADOW, SHADOW, DEPTH, TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING);
-const tDummy = tex(1, 1, DEPTH, TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING);
+const tDummy = tex(1, 1, DEPTH, TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING), tDummy2 = tex(1, 1, DEPTH, TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING);
 const tDetail = tex(1024, 1024, 'rgba8unorm', TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING, { mips: 11 });
 const tFar = tex(FN, FN, 'rgba8unorm', TU.TEXTURE_BINDING | TU.COPY_DST), tNear = tex(NX, NZ, 'rgba8unorm', TU.TEXTURE_BINDING | TU.COPY_DST), tHgt = tex(NX, NZ, 'rgba8unorm', TU.TEXTURE_BINDING | TU.COPY_DST);
 
@@ -68,18 +68,25 @@ let AMBUP;
   rb.unmap(); rb.destroy();
   AMBUP = I.map((x, c) => x * ATM_S * ATM_NT[c] * (NIGHT ? .3 : 1));
 }
-const UB = new Float32Array(84), UBS = new Float32Array(84);
-const ubo = device.createBuffer({ size: 336, usage: BU.UNIFORM | BU.COPY_DST }), uboS = device.createBuffer({ size: 336, usage: BU.UNIFORM | BU.COPY_DST });
+const UB = new Float32Array(100), UBS = new Float32Array(100), UBS2 = new Float32Array(100);
+const ubo = device.createBuffer({ size: 400, usage: BU.UNIFORM | BU.COPY_DST }), uboS = device.createBuffer({ size: 400, usage: BU.UNIFORM | BU.COPY_DST }), uboS2 = device.createBuffer({ size: 400, usage: BU.UNIFORM | BU.COPY_DST });
+// the static map: the whole route, drawn once (the sun does not move), so the tents and structures beyond the near
+// map still cast shadows; its light-space aspect follows the sun's elevation (a low sun squeezes the ground)
+const STW = LV > 1 ? 2048 : 4096;
+const [sthx, sthy] = fitLight(UBS2, NOX, NOX + (NX - 1) * NC, -60, 360, NOZ, NOZ + (NZ - 1) * NC);
+const STH = min(STW, max(STW / 4, 2 ** round(Math.log2(STW * sthy / sthx))));
+for (let i = 0; i < 16; i++) UB[84 + i] = UBS[84 + i] = UBS2[i];
+const tStat = tex(STW, STH, DEPTH, TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING);
 const VF = SS.VERTEX | SS.FRAGMENT;
 const bgl0 = device.createBindGroupLayout({ entries: [
   { binding: 0, visibility: VF, buffer: {} },
   { binding: 1, visibility: VF, sampler: {} }, { binding: 2, visibility: VF, sampler: {} }, { binding: 3, visibility: VF, sampler: { type: 'comparison' } },
-  { binding: 4, visibility: VF, texture: { sampleType: 'depth' } }, { binding: 5, visibility: VF, texture: {} }, { binding: 6, visibility: VF, texture: {} }, { binding: 7, visibility: VF, texture: {} }, { binding: 8, visibility: VF, texture: {} }, { binding: 9, visibility: VF, texture: {} }, { binding: 10, visibility: VF, texture: {} }] });
-const mkBG0 = (u, sh) => device.createBindGroup({ layout: bgl0, entries: [
+  { binding: 4, visibility: VF, texture: { sampleType: 'depth' } }, { binding: 5, visibility: VF, texture: {} }, { binding: 6, visibility: VF, texture: {} }, { binding: 7, visibility: VF, texture: {} }, { binding: 8, visibility: VF, texture: {} }, { binding: 9, visibility: VF, texture: {} }, { binding: 10, visibility: VF, texture: {} }, { binding: 11, visibility: VF, texture: { sampleType: 'depth' } }] });
+const mkBG0 = (u, sh, st) => device.createBindGroup({ layout: bgl0, entries: [
   { binding: 0, resource: { buffer: u } }, { binding: 1, resource: sRep }, { binding: 2, resource: sClamp }, { binding: 3, resource: sCmp },
-  { binding: 4, resource: sh.createView() }, { binding: 5, resource: tDetail.createView() }, { binding: 6, resource: tSV.createView() }, { binding: 7, resource: tMSc.createView() }, { binding: 8, resource: tFar.createView() }, { binding: 9, resource: tNear.createView() }, { binding: 10, resource: tHgt.createView() }] });
-const bg0 = mkBG0(ubo, tShadow), bg0s = mkBG0(uboS, tDummy);
-for (let c = 0; c < 3; c++) UB[80 + c] = UBS[80 + c] = AMBUP[c];
+  { binding: 4, resource: sh.createView() }, { binding: 5, resource: tDetail.createView() }, { binding: 6, resource: tSV.createView() }, { binding: 7, resource: tMSc.createView() }, { binding: 8, resource: tFar.createView() }, { binding: 9, resource: tNear.createView() }, { binding: 10, resource: tHgt.createView() }, { binding: 11, resource: st.createView() }] });
+const bg0 = mkBG0(ubo, tShadow, tStat), bg0s = mkBG0(uboS, tDummy, tStat), bg0s2 = mkBG0(uboS2, tDummy, tDummy2);
+for (let c = 0; c < 3; c++) UB[80 + c] = UBS[80 + c] = UBS2[80 + c] = AMBUP[c];
 const pl0 = device.createPipelineLayout({ bindGroupLayouts: [bgl0] });
 
 const bglBlit = device.createBindGroupLayout({ entries: [{ binding: 0, visibility: SS.FRAGMENT, texture: {} }, { binding: 1, visibility: SS.FRAGMENT, sampler: {} }] });
@@ -134,26 +141,34 @@ let frameN = 0, histReset = 1, ping = 0, pcx = 0, pcy = 0, pcz = 0;
 // The route is 4 km long, so the shadow map covers a 520 m square round the camera and is redrawn when the camera
 // has moved 60 m; the mountains' shadows come from the terrain bake, which covers everything.
 const SHC = new Float64Array(3);
-function setShadow(cx, cy, cz) {
-  SHC[0] = cx; SHC[1] = cy; SHC[2] = cz;
+// an orthographic light matrix fitted round a box, written into m[0..15]; returns the light-space half extents
+function fitLight(m, x0, x1, y0, y1, z0, z1) {
   const L = SUN, lr = [L[2], 0, -L[0]], ll = hypot(lr[0], lr[1], lr[2]); lr[0] /= ll; lr[2] /= ll;
   const lu = [L[1] * lr[2] - L[2] * lr[1], L[2] * lr[0] - L[0] * lr[2], L[0] * lr[1] - L[1] * lr[0]];
   let e00 = 1e9, e01 = -1e9, e10 = 1e9, e11 = -1e9, e20 = 1e9, e21 = -1e9;
   for (let i = 0; i < 8; i++) {
-    const x = cx + (i & 1 ? 260 : -260), y = cy + (i & 2 ? 140 : -60), z = cz + (i & 4 ? 260 : -260);
+    const x = i & 1 ? x1 : x0, y = i & 2 ? y1 : y0, z = i & 4 ? z1 : z0;
     const a = x * lr[0] + y * lr[1] + z * lr[2], b = x * lu[0] + y * lu[1] + z * lu[2], c = x * L[0] + y * L[1] + z * L[2];
     e00 = min(e00, a); e01 = max(e01, a); e10 = min(e10, b); e11 = max(e11, b); e20 = min(e20, c); e21 = max(e21, c);
   }
-  const m = UBS, hx = (e01 - e00) / 2, mx = (e01 + e00) / 2, hy = (e11 - e10) / 2, my = (e11 + e10) / 2;
+  const hx = (e01 - e00) / 2, mx = (e01 + e00) / 2, hy = (e11 - e10) / 2, my = (e11 + e10) / 2;
   const d0 = e20 - 5, d1 = e21 + 300, dd = d1 - d0;
   m[0] = lr[0] / hx; m[4] = lr[1] / hx; m[8] = lr[2] / hx; m[12] = -mx / hx;
   m[1] = lu[0] / hy; m[5] = lu[1] / hy; m[9] = lu[2] / hy; m[13] = -my / hy;
   m[2] = -L[0] / dd; m[6] = -L[1] / dd; m[10] = -L[2] / dd; m[14] = d1 / dd;
   m[3] = 0; m[7] = 0; m[11] = 0; m[15] = 1;
-  for (let i = 0; i < 16; i++) { UBS[16 + i] = m[i]; UB[16 + i] = m[i]; }
+  return [hx, hy];
+}
+function setShadow(cx, cy, cz) {
+  SHC[0] = cx; SHC[1] = cy; SHC[2] = cz;
+  fitLight(UBS, cx - 260, cx + 260, cy - 60, cy + 140, cz - 260, cz + 260);
+  for (let i = 0; i < 16; i++) { UBS[16 + i] = UBS[i]; UB[16 + i] = UBS[i]; }
 }
 for (let i = 0; i < 3; i++) { UB[48 + i] = UBS[48 + i] = SUN[i]; }
 UBS[32] = 0; UBS[33] = 300; UBS[34] = 0; UBS[35] = 0; UBS[58] = 1;
+// the static pass keeps every instance at full size (mis.w), wherever the camera is
+for (let i = 0; i < 3; i++) UBS2[48 + i] = SUN[i];
+UBS2[58] = 1; UBS2[59] = 1;
 
 // ---------------------------------------------------------------- world generation
 await say('Reading the land…', 0.2, 1000);
@@ -239,7 +254,7 @@ const ibSolids = buf(solidData, BU.VERTEX);
 const ibBirds = buf(Wd.birds, BU.VERTEX), nBirds = Wd.birds.length / 8, ibMotes = buf(Wd.motes, BU.VERTEX), nMotes = Wd.motes.length / 4;
 const BIRD = meshes[NSOL];
 Q.writeTexture({ texture: tFar }, Wd.fmap, { bytesPerRow: FN * 4 }, [FN, FN]);
-const shadowCast = []; for (let i = 0; i < NSOL; i++) if (!Wd.farIds.has(i) && i > 0) shadowCast.push(i);
+const shadowCast = []; for (let i = 0; i < NSOL; i++) if (!Wd.farIds.has(i)) shadowCast.push(i);
 
 // ---------------------------------------------------------------- bakes: detail texture and the shadow map, once
 {
@@ -254,15 +269,16 @@ const shadowCast = []; for (let i = 0; i < NSOL; i++) if (!Wd.farIds.has(i) && i
   Q.submit([e.finish()]);
 }
 const passShadow = { colorAttachments: [], depthStencilAttachment: { view: tShadow.createView(), depthClearValue: 1, depthLoadOp: 'clear', depthStoreOp: 'store' } };
-function drawShadow(e) {
-  Q.writeBuffer(uboS, 0, UBS);
-  const r = e.beginRenderPass(passShadow);
-  r.setBindGroup(0, bg0s);
+function drawShadow(e, pass = passShadow, u = uboS, U = UBS, bg = bg0s) {
+  Q.writeBuffer(u, 0, U);
+  const r = e.beginRenderPass(pass);
+  r.setBindGroup(0, bg);
   r.setPipeline(pSolidSh); r.setVertexBuffer(0, vbMesh); r.setVertexBuffer(1, ibSolids); r.setIndexBuffer(ibMesh, 'uint32');
   for (const i of shadowCast) { const g = Wd.solids.ranges[i]; if (g[1]) r.drawIndexed(meshes[i].ib.length, g[1], meshes[i].i0, meshes[i].v0, g[0]); }
   r.end();
 }
 Wd.fmap = 0;
+{ const e = device.createCommandEncoder(); drawShadow(e, { colorAttachments: [], depthStencilAttachment: { view: tStat.createView(), depthClearValue: 1, depthLoadOp: 'clear', depthStoreOp: 'store' } }, uboS2, UBS2, bg0s2); Q.submit([e.finish()]); }
 
 // ---------------------------------------------------------------- render targets (rebuilt on resize)
 const PIXMAX = 2560 * 1440, PIXMIN = mob ? 25e4 : 5e5, DETMIN = 0.4;

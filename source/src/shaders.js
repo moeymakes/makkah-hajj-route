@@ -149,7 +149,8 @@ fn svUV(rd: vec3f) -> vec2f {
 const S_G = /*wgsl*/`
 // pvp: last frame's unjittered view-projection; jit: xy this frame's projection jitter in NDC, z history reset (1), w frame
 // amb: sky light on an up-facing white surface, integrated from the sky-view LUT at load
-struct G { vp: mat4x4f, sm: mat4x4f, cam: vec4f, right: vec4f, up: vec4f, fwd: vec4f, sun: vec4f, res: vec4f, mis: vec4f, pvp: mat4x4f, jit: vec4f, amb: vec4f };
+// sm2: the static whole-route shadow map's light matrix
+struct G { vp: mat4x4f, sm: mat4x4f, cam: vec4f, right: vec4f, up: vec4f, fwd: vec4f, sun: vec4f, res: vec4f, mis: vec4f, pvp: mat4x4f, jit: vec4f, amb: vec4f, sm2: mat4x4f };
 const LUMA = vec3f(.2126, .7152, .0722);
 const SUNC = ${f3(SUNCP)}; const CLOUDSUN = ${f3(CLOUDSUN)};
 // sky radiance per unit of the LUT: pi * solar scale, because surfaces here take SUNC as irradiance / pi
@@ -187,6 +188,7 @@ const S_B = S_G + W_ATMC + /*wgsl*/`
 @group(0) @binding(10) var tH: texture_2d<f32>;
 @group(0) @binding(6) var tSV: texture_2d<f32>;
 @group(0) @binding(7) var tMS: texture_2d<f32>;
+@group(0) @binding(11) var tSt: texture_depth_2d;
 // sky radiance in direction rd, from the sky-view LUT; at night the lit route glows low on the horizon
 fn skyCol(rd: vec3f, sun: vec3f) -> vec3f {
   var c = textureSampleLevel(tSV, sC, svUV(rd), 0.).rgb * SKYS;
@@ -229,13 +231,22 @@ fn nearAt(p: vec2f) -> vec4f {
   return textureSampleLevel(tN, sC, uv, 0.);
 }
 fn terrainSun(p: vec3f) -> f32 { return ss(.15, .85, nearAt(p.xz).a); }
-fn shadow1(p: vec3f) -> f32 { let s = shUV(p); return mix(1., textureSampleCompareLevel(tSh, sS, s.xy, s.z), shK(s)) * terrainSun(p); }
+// the static map's texels stretch along the sun at a low elevation, so its lookup is pushed a little toward the
+// sun: flat roofs and the ground would otherwise shadow themselves in stripes
+fn statSh(p: vec3f, taps: i32) -> f32 {
+  let q = g.sm2 * vec4f(p + g.sun.xyz * 2.2, 1.); let s = vec3f(q.x * .5 + .5, .5 - q.y * .5, q.z - .0002);
+  if (taps == 1 || LOW) { return mix(1., textureSampleCompareLevel(tSt, sS, s.xy, s.z), shK(s)); }
+  let e = .75 / vec2f(textureDimensions(tSt)); var a = 0.;
+  for (var k = 0; k < 4; k++) { let o = vec2f(f32(k & 1), f32(k >> 1)) * 2. - 1.; a += textureSampleCompareLevel(tSt, sS, s.xy + o * e, s.z); }
+  return mix(1., a * .25, shK(s));
+}
+fn shadow1(p: vec3f) -> f32 { let s = shUV(p); return mix(statSh(p, 1), textureSampleCompareLevel(tSh, sS, s.xy, s.z), shK(s)) * terrainSun(p); }
 fn shadow9(p: vec3f) -> f32 {
   if (LOW) { return shadow1(p); }
   let s = shUV(p); let e = 1.6 / ${SHADOW}.; var a = 0.;
   let r = h2(floor(p.xz * 233.) + floor(p.y * 197.)) * TAU; let cr = cos(r); let sr = sin(r);
   for (var x = 0; x < 4; x++) { for (var y = 0; y < 4; y++) { let o = vec2f(f32(x), f32(y)) - 1.5; a += textureSampleCompareLevel(tSh, sS, s.xy + vec2f(o.x * cr - o.y * sr, o.x * sr + o.y * cr) * e, s.z); } }
-  return mix(1., a / 16., shK(s)) * terrainSun(p);
+  return mix(statSh(p, 4), a / 16., shK(s)) * terrainSun(p);
 }
 fn amb(n: vec3f, sky: f32) -> vec3f {
   let up = n.y * .5 + .5;
@@ -274,7 +285,7 @@ struct VO { @builtin(position) cp: vec4f, @location(0) wp: vec3f, @location(1) n
 @vertex fn vs(i: VI) -> VO {
   var o: VO;
   var sc = i.a.w;
-  if (i.c.z > .5) { sc *= 1. - ss(i.c.z * .7, i.c.z, distance(i.a.xyz, g.cam.xyz)); }
+  if (i.c.z > .5 && g.mis.w < .5) { sc *= 1. - ss(i.c.z * .7, i.c.z, distance(i.a.xyz, g.cam.xyz)); }
   let lp = i.p * sc;
   var w = i.a.xyz + qrot(i.b, lp);
   let mt = i.c.x;
