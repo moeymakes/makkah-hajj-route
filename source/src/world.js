@@ -7,8 +7,8 @@
 
 // time of day: the key light (the moon at night), sky colours, exposure and how bright the lamps are
 const TODS = [
-  { az: 70, el: 9, sunc: [2.8, 1.62, 1.0], zen: [.13, .24, .54], horL: [1.45, .82, .52], horF: [.72, .66, .70], gnd: [.80, .68, .58], expo: .44, rays: 1, lights: .2 },
-  { az: 252, el: 12, sunc: [2.9, 2.1, 1.35], zen: [.10, .24, .58], horL: [1.35, .84, .44], horF: [.74, .68, .66], gnd: [.86, .70, .52], expo: .45, rays: 1, lights: 1 },
+  { az: 70, el: 6, sunc: [2.8, 1.62, 1.0], zen: [.13, .24, .54], horL: [1.45, .82, .52], horF: [.72, .66, .70], gnd: [.80, .68, .58], expo: .44, rays: 1, lights: .2 },
+  { az: 252, el: 12, sunc: [2.9, 2.1, 1.35], zen: [.10, .24, .58], horL: [1.35, .84, .44], horF: [.74, .68, .66], gnd: [.86, .70, .52], expo: .45, rays: .6, lights: 1 },
   { az: 140, el: 35, sunc: [.11, .135, .2], zen: [.004, .008, .022], horL: [.05, .045, .05], horF: [.02, .025, .04], gnd: [.04, .036, .034], expo: 1.5, rays: 0, lights: 6 },
 ];
 const TD = TODS[TOD], NIGHT = TOD === 2;
@@ -210,7 +210,8 @@ function meshBird() {
 // ---------------------------------------------------------------- materials (W_SOLID fs)
 // 1 far ground · 2 near ground · 7 plain stone (mosques, arcades painted on) · 10 gold · 20 minaret stone ·
 // 22 lamp glass · 27 granite / concrete (w 1 Jamarat concrete, w 2 boulders) · 36 white plaster (the pillar) ·
-// 37 domes · 41 tent fabric · 42 neem foliage · 43 bark · 44 steel / poles · 45 canopy fabric
+// 37 domes · 41 tent fabric (w: the camp's tone) · 42 neem foliage · 43 bark · 44 steel / poles · 45 canopy fabric ·
+// 46 camp fence panels · 47 camp service blocks
 function makeWorld(FAR, NEAR, flyPts) {
   const meshes = [], solids = [];
   const add = (m) => { meshes.push(m); return meshes.length - 1; };
@@ -229,19 +230,39 @@ function makeWorld(FAR, NEAR, flyPts) {
 
   // --- tents: Mina's valley floor in blocks with alleys, and patches on Arafat
   rseed(3);
-  const tentM = [meshTent(8, 8), meshTent(12, 8)].map(add);
+  const tentM = [meshTent(8, 8), meshTent(12, 8), meshTent(6, 8)].map(add);
+  // camps: each block of cells is one camp with its own tent size, facing, tone (instance w) and fill; a fence runs
+  // round it, one cell holds a flat-roofed service block, and every tent has its air-conditioning unit beside it
+  const fence = new Mesh(), svc = new Mesh(), acM = new Mesh();
+  box(acM, -.55, 0, -.4, .55, .95, .4, .8); box(acM, -.42, .95, -.32, .42, 1.05, .32);
+  const acId = add(acM), camps = new Map();
   for (let x = -1230; x < -300; x += 9.6) {
     const cz = czf(x);
     for (let z = cz - 470; z < cz + 470; z += 9.6) {
       const bi = round((x + 1230) / 9.6), bj = round((z - cz + 470) / 9.6);
       if (bi % 6 === 5 || bj % 7 === 6) continue;
+      const ci = floor(bi / 6), cj = floor(bj / 7), ch = ihash(ci, cj, 3), ck = (ci * 64 + cj) * 3 + (z - cz < -75 ? 0 : z - cz < 35 ? 1 : 2);
       const tx = x + rr(-.15, .15), tz = z + rr(-.15, .15);
       if (nb(tx, tz, 0) < .5 || slope(tx, tz, 5) > 2 || rnd() < .03) continue;
       if (hypot(tx - KHAYF[0], tz - KHAYF[1]) < 90) continue;
-      solid(tentM[0], tx, min(gy(tx - 3.5, tz - 3.5), gy(tx + 3.5, tz + 3.5), gy(tx - 3.5, tz + 3.5), gy(tx + 3.5, tz - 3.5)) + .05, tz, rr(.96, 1.04), yawQ(rr(-.015, .015)), 41, rnd(), 0, 0);
+      const c = camps.get(ck) || camps.set(ck, [1e9, -1e9, 1e9, -1e9, 0]).get(ck);
+      c[0] = min(c[0], tx); c[1] = max(c[1], tx); c[2] = min(c[2], tz); c[3] = max(c[3], tz);
+      const y = min(gy(tx - 3.5, tz - 3.5), gy(tx + 3.5, tz + 3.5), gy(tx - 3.5, tz + 3.5), gy(tx + 3.5, tz - 3.5));
+      if (bi % 6 === 2 && bj % 7 === 3 && ch > .25) { box(svc, tx - 4.4, y - .5, tz - 4.4, tx + 4.4, y + 3.4, tz + 4.4); cbox(tx - 4.4, tx + 4.4, y - 1, y + 3.4, tz - 4.4, tz + 4.4); continue; }
+      const narrow = ch < .3, turn = narrow && ihash(ci, cj, 7) < .5;
+      solid(tentM[narrow ? 2 : 0], tx, y + .05, tz, rr(.97, 1.03), yawQ((turn ? PI / 2 : 0) + rr(-.015, .015)), 41, rnd(), 0, ch);
+      const s = rnd() < .5 ? 1 : -1, ax = turn ? tx + s * 3.9 : tx + rr(-2, 2), az = turn ? tz + rr(-2, 2) : tz + s * (narrow ? 3.9 : 4.6);
+      if (rnd() < .85) solid(acId, ax, gy(ax, az), az, rr(.9, 1.1), yawQ(turn ? PI / 2 : 0), 44, rnd(), 260, 1);
       occ(tx - 4.3, tx + 4.3, tz - 4.3, tz + 4.3);
     }
   }
+  // camp fences: 1.8 m metal panels round each camp, a gap for the gate on the alley side
+  for (const [, c] of camps) {
+    const x0 = c[0] - 4.9, x1 = c[1] + 4.9, z0 = c[2] - 4.9, z1 = c[3] + 4.9, gx = (x0 + x1) / 2;
+    for (const [a0, a1, zz] of [[x0, gx - 3, z0], [gx + 3, x1, z0], [x0, x1, z1]]) box(fence, a0, gy(a0, zz) - .6, zz - .06, a1, gy(a1, zz) + 1.8, zz + .06, .85);
+    for (const xx of [x0, x1]) box(fence, xx - .06, gy(xx, z0) - .6, z0, xx + .06, gy(xx, z1) + 1.8, z1, .85);
+  }
+  solid(add(fence), 0, 0, 0, 1, Q0, 46, 0); solid(add(svc), 0, 0, 0, 1, Q0, 47, 0);
   for (let x = 1000; x < 2260; x += 13.6) for (let z = -900; z < 900; z += 9.6) {
     const cz = czf(x), tx = x + rr(-.2, .2), tz = cz + z;
     const bi = round((x - 1000) / 13.6), bj = round((z + 900) / 9.6);

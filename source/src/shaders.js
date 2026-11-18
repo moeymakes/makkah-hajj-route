@@ -331,6 +331,8 @@ fn archD(bu: f32, v: f32, hw: f32, ys: f32, R: f32) -> vec2f {
   let A = tri(i.op, on, select(.07, .035, mat == 1) * ts); let B = tri(i.op, on, .31 * ts); let C = tri(i.op, on, 1.3 * ts);
   let Lg = textureSample(tD, sR, i.wp.xz * .0045 + .31);
   let G2 = textureSample(tD, sR, i.wp.xz * .0021 + vec2f(.13, .71));
+  // district tint: broad patches over 1.4 and 3.2 km, so whole stretches of the valley differ, not single stones
+  let D1 = textureSample(tD, sR, i.wp.xz / 1400. + .17); let D2 = textureSample(tD, sR, i.wp.xz / 3200. + .61);
   let fm = textureSample(tF, sC, i.wp.xz / 24000. + .5);
   let nm = nearAt(i.wp.xz);
   let fwp = length(fwidth(i.wp.xz)); let fw3 = length(fwidth(i.wp)); let fwop = length(fwidth(i.op));
@@ -345,14 +347,17 @@ fn archD(bu: f32, v: f32, hw: f32, ys: f32, R: f32) -> vec2f {
     var gr = mix(vec3f(.12, .115, .11), vec3f(.27, .25, .23), sat(G2.a * 1.4 - .2)) * (.55 + .7 * mix(B.h, G2.b, .5));
     gr = mix(gr, gr * vec3f(1.18, 1.05, .92), ss(.5, .8, B.c) * .45);
     alb = mix(sand, gr, sat(rock * 1.3) * (1. - .25 * flt));
+    alb *= mix(vec3f(1.05, .97, .89), vec3f(.93, .94, .96), ss(.35, .65, D1.a)) * (.9 + .2 * D2.b);
+    // the camps' floors are compacted grey-beige gravel, scuffed paler along the paths
+    alb = mix(alb, vec3f(.42, .40, .36) * (.85 + .3 * mix(B.h, D1.b, .5)), ss(.3, .8, fm.b) * (1. - sat(rock * 1.3)) * .75);
     let lane = cov(abs(abs(i.wp.z - czf(i.wp.x) + 75.) - 6.), .12, fwp) + cov(abs(abs(i.wp.z - czf(i.wp.x) + 75.) - 1.), .1, fwp) * step(.5, fract(i.wp.x / 9.));
     alb = mix(alb, mix(vec3f(.26, .25, .25), vec3f(.85, .83, .78), lane * (1. - ss(.3, 1.5, fwp))), road);
     let tile = max(cov(abs(fract(i.wp.x / 1.2) - .5) * 1.2 - .58, .01, fwp), cov(abs(fract(i.wp.z / 1.2) - .5) * 1.2 - .58, .01, fwp)) * (1. - ss(.015, .06, fwp));
-    alb = mix(alb, vec3f(.78, .75, .70) * (1. - .2 * tile) * (.94 + .08 * h2(floor(i.wp.xz / 1.2))), paved);
+    alb = mix(alb, vec3f(.62, .60, .56) * (1. - .2 * tile) * (.94 + .08 * h2(floor(i.wp.xz / 1.2))), paved);
     bump = mix(1., .1, max(road, paved)) * mix(.25, 1.2, rock); gloss = mix(.03, .12, paved);
   } else if (mat == 7) {
     // the mosques: pale stone with two storeys of arcades painted on, a band under the parapet
-    alb = vec3f(.80, .76, .68) * (.96 + .05 * B.h) * (.97 + .05 * C.c);
+    alb = vec3f(.70, .66, .58) * (.96 + .05 * B.h) * (.97 + .05 * C.c);
     let wv = fv;
     let ar1 = arcade(fu + 3., wv, 6., 6., .8) * wall * step(.2, abs(on.x) + abs(on.z));
     let ar2 = arcade(fu + 3., wv + .25, 5.2, 5.6, .8) * wall;
@@ -363,11 +368,11 @@ fn archD(bu: f32, v: f32, hw: f32, ys: f32, R: f32) -> vec2f {
     alb = mix(alb, alb * .7, cov(abs(wv - 18.6), .25, fwop) * wall);
     emi = LAMPC * LIGHTS * .12 * ar1 * step(wv, 14.);
     alb = mix(alb, alb * vec3f(.86, .8, .7), ss(.9, .97, fract(wv / 15.)) * wall);
-    alb = mix(alb, vec3f(.72, .70, .66) * (.9 + .15 * B.c), ss(.6, .9, on.y));
-    emi += alb * vec3f(1., .9, .76) * .2 * f32(NIGHT) * wall;
+    alb = mix(alb, vec3f(.60, .58, .55) * (.9 + .15 * B.c), ss(.6, .9, on.y));
+    emi += alb * vec3f(1., .9, .76) * mix(.14, .05, ss(0., 18., fv)) * f32(NIGHT) * wall;
     bump = .05; gloss = .1;
   } else if (mat == 20) {
-    alb = vec3f(.80, .76, .68) * (.96 + .05 * B.h);
+    alb = vec3f(.70, .66, .58) * (.96 + .05 * B.h);
     let ang = atan2(i.op.z, i.op.x); let fa = (fract(ang / TAU * 8. + .5) - .5) * TAU / 8.;
     let rr = length(i.op.xz); let fuo = rr * sin(fa);
     let k = i.m.w; let y = i.op.y / k;
@@ -385,7 +390,7 @@ fn archD(bu: f32, v: f32, hw: f32, ys: f32, R: f32) -> vec2f {
     }
     let bal = vec3f(48.4, 66.6, 78.8);
     for (var b = 0; b < 3; b++) { emi += vec3f(1., .7, .4) * .6 * LIGHTS * ss(bal[b] - .4, bal[b] + .6, y) * ss(bal[b] + 2.1, bal[b] + 1.3, y) * step(on.y, -.1); }
-    emi += alb * vec3f(1., .9, .76) * .3 * f32(NIGHT) * ss(140. * k, 10., i.op.y);
+    emi += alb * vec3f(1., .9, .76) * .15 * f32(NIGHT) * ss(140. * k, 10., i.op.y);
     bump = .05; gloss = .12;
   } else if (mat == 10) {
     alb = vec3f(1., .74, .32); gloss = .8; metal = 1.; bump = 0.;
@@ -393,20 +398,28 @@ fn archD(bu: f32, v: f32, hw: f32, ys: f32, R: f32) -> vec2f {
     alb = vec3f(.9, .85, .7); emi = vec3f(2.6, 1.9, 1.2) * 1.4 * max(LIGHTS, .3) * (.9 + .2 * sd); gloss = .8;
   } else if (mat == 27) {
     // w 1 concrete (the Jamarat, the rail line), w 2 granite boulders, w 3 the pillars' dressed stone
-    if (i.m.w < 1.5) { alb = vec3f(.74, .72, .68) * (.9 + .14 * B.h) * (.95 + .08 * C.c); gloss = .1; bump = .1; emi = vec3f(1., .82, .6) * .05 * LIGHTS * f32(NIGHT) * wall; }
+    if (i.m.w < 1.5) { alb = vec3f(.58, .56, .52) * (.9 + .14 * B.h) * (.95 + .08 * C.c); gloss = .1; bump = .1; emi = vec3f(1., .82, .6) * .03 * LIGHTS * f32(NIGHT) * wall; }
     else if (i.m.w < 2.5) { alb = mix(vec3f(.25, .23, .22), vec3f(.44, .40, .36), A.c) * (.7 + .5 * B.h) * (.8 + .4 * hs(sd * 17.)); gloss = .08; bump = 1.; }
     else { alb = vec3f(.46, .43, .40) * (.9 + .15 * B.h); let cj = cov(abs(fract(fv / .8) - .5) * .8 - .38, .015, fwop); alb *= 1. - .2 * cj; gloss = .15; bump = .2; }
   } else if (mat == 36) {
-    alb = vec3f(.90, .89, .86) * (.96 + .05 * B.h); gloss = .3; bump = .05; emi = alb * .25 * f32(NIGHT);
+    alb = vec3f(.76, .75, .72) * (.96 + .05 * B.h); gloss = .3; bump = .05; emi = alb * .15 * f32(NIGHT);
   } else if (mat == 37) {
-    alb = vec3f(.82, .80, .76) * (.94 + .08 * B.h); gloss = .25; bump = .05;
+    alb = vec3f(.70, .68, .64) * (.94 + .08 * B.h); gloss = .25; bump = .05;
   } else if (mat == 41) {
     // tent fabric: white with seams; at night the light inside shows through the walls
+    // Teflon-coated fibreglass reflects ~.7, not .85: each camp has its own tone (white, cream, a greyer weathered
+    // white), single tents vary a little, dust climbs the skirt and streaks down the roof panels
     let seam = cov(abs(fract(fu / 1.6) - .5) * 1.6, .02, fwop) * (1. - ss(.02, .08, fwop));
-    alb = vec3f(.84, .84, .82) * (1. - .12 * seam) * (.94 + .1 * hs(sd * 13.));
+    let tone = i.m.w;
+    alb = select(select(vec3f(.72, .72, .70), vec3f(.73, .70, .63), tone > .55), vec3f(.64, .64, .62), tone > .85);
+    alb *= (1. - .12 * seam) * (.93 + .1 * hs(sd * 13.)) * (.94 + .1 * B.h);
+    let roof = ss(.25, .45, on.y);
+    alb *= mix(1., .9 + .12 * C.c - .1 * ss(.55, .8, A.c), roof);
+    alb = mix(alb * vec3f(.78, .72, .64), alb, ss(-.3, 1.1, fv));
     let wallPart = step(fv, 2.4) * wall;
-    emi = vec3f(1., .78, .52) * LIGHTS * (.02 + .06 * wallPart) * step(.15, hs(sd * 7.)) * f32(LIGHTS > .5);
-    gloss = .2; bump = .02; vao = mix(.7, 1., ss(-.5, 1.5, fv));
+    let lit = step(.12, hs(sd * 7.)) * mix(.6, 1.2, hs(tone * 31.));
+    emi = vec3f(1., .78, .52) * LIGHTS * (.004 + .018 * wallPart * ss(2.6, .2, fv)) * lit * f32(LIGHTS > .5);
+    gloss = .2; bump = .02; vao = mix(.6, 1., ss(-.5, 1.5, fv));
   } else if (mat == 42) {
     alb = mix(vec3f(.20, .21, .14), vec3f(.27, .27, .18), B.c) * (.7 + .6 * C.h); gloss = .1; bump = 1.4;
     vao = mix(.55, 1., sat((i.op.y - 2.) / 3.5));
@@ -414,10 +427,18 @@ fn archD(bu: f32, v: f32, hw: f32, ys: f32, R: f32) -> vec2f {
     alb = vec3f(.24, .19, .14) * (.8 + .4 * C.h); bump = .8;
   } else if (mat == 44) {
     alb = vec3f(.55, .56, .58); metal = .5; gloss = .45; bump = .05;
+  } else if (mat == 46) {
+    // camp fence: ribbed beige metal panels, dusty at the foot
+    let rib = cov(abs(fract(fu / .25) - .5) * .25, .03, fwop) * (1. - ss(.01, .05, fwop));
+    alb = vec3f(.62, .58, .50) * (1. - .15 * rib) * mix(.75, 1., ss(-.4, 1.2, fv)) * (.92 + .1 * B.h); gloss = .15; bump = .05;
+  } else if (mat == 47) {
+    // service blocks (kitchens, washrooms): painted block walls, a grey roof, a dark door
+    alb = select(vec3f(.62, .60, .56), vec3f(.40, .40, .40), on.y > .5) * (.9 + .15 * B.h) * (.94 + .1 * C.c);
+    bump = .1; gloss = .08; emi = vec3f(1., .82, .6) * .02 * LIGHTS * wall * f32(LIGHTS > .5);
   } else if (mat == 45) {
     let rib = cov(abs(fract(i.wp.x / 1.75) - .5) * 1.75, .04, fwp) * step(on.y, -.5) * (1. - ss(.02, .08, fwp));
-    alb = vec3f(.92, .92, .90) * (1. - .25 * rib); gloss = .3; bump = .02;
-    emi = vec3f(1., .82, .6) * .035 * LIGHTS * step(on.y, -.5) * f32(LIGHTS > .5) + SUNC * vec3f(1., .9, .75) * .1 * step(on.y, -.5) * (1. - rib) * f32(!NIGHT);
+    alb = vec3f(.72, .72, .70) * (1. - .25 * rib); gloss = .3; bump = .02;
+    emi = vec3f(1., .82, .6) * .01 * LIGHTS * step(on.y, -.5) * f32(LIGHTS > .5) + SUNC * vec3f(1., .9, .75) * .1 * step(on.y, -.5) * (1. - rib) * f32(!NIGHT);
   }
   let N = normalize(qrot(i.q, normalize(onG + (A.n * .8 + B.n * .6 + C.n * .4 * ss(70., 10., dist)) * bump)));
   let L = g.sun.xyz; let V = normalize(g.cam.xyz - i.wp);
